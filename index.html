@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestiones Online - Finanzas Pro</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0b0f17',
+                        darkCard: '#131924',
+                        darkBorder: '#1e293b',
+                        brandBlue: '#2563eb',
+                        brandGreen: '#10b981',
+                        brandRed: '#f43f5e'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Google Material Icons Round -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+
+    <!-- Dexie.js para base de datos local robusta -->
+    <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
+
+    <style>
+        /* Ocultar barra de desplazamiento por defecto para una interfaz nativa */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0b0f17; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #2563eb; }
+        .active-tab {
+            color: #2563eb !important;
+            border-top: 2px solid #2563eb;
+        }
+        @media (min-width: 768px) {
+            .active-tab {
+                border-top: none;
+                border-left: 4px solid #2563eb;
+                background-color: rgba(37, 99, 235, 0.08);
+            }
+        }
+        .auth-tab-active {
+            color: #fff !important;
+            border-bottom: 2px solid #2563eb;
+        }
+    </style>
+</head>
+<body class="bg-darkBg text-white font-sans min-h-screen">
+
+    <!-- Toast de Notificaciones Personalizado -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- ================= PANTALLA DE AUTENTICACIÓN ================= -->
+    <div id="auth-screen" class="min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-sm bg-darkCard border border-darkBorder rounded-3xl p-6 shadow-xl">
+            <div class="flex items-center gap-3 mb-6 justify-center">
+                <span class="material-icons-round text-brandBlue text-3xl">account_balance_wallet</span>
+                <div>
+                    <h1 class="font-extrabold text-lg tracking-tight">Gestiones Online</h1>
+                    <span class="text-xs text-slate-400">Control Financiero</span>
+                </div>
+            </div>
+
+            <div class="flex border-b border-darkBorder mb-5">
+                <button id="tab-login-btn" onclick="mostrarTabAuth('login')" class="flex-1 py-2 text-sm font-bold text-slate-400 auth-tab-active">Iniciar sesión</button>
+                <button id="tab-register-btn" onclick="mostrarTabAuth('register')" class="flex-1 py-2 text-sm font-bold text-slate-400">Registrarse</button>
+            </div>
+
+            <!-- Formulario de Inicio de Sesión -->
+            <form id="form-login" class="space-y-4">
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-bold text-slate-400">Usuario</label>
+                    <input type="text" id="login-usuario" autocomplete="username" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm" placeholder="Tu nombre de usuario" required>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-bold text-slate-400">Contraseña</label>
+                    <input type="password" id="login-password" autocomplete="current-password" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="w-full py-3 bg-brandBlue text-white font-bold rounded-xl hover:opacity-90 active:scale-[0.98] transition">Entrar</button>
+                <p class="text-[10px] text-slate-500 text-center leading-relaxed">Usuario administrador por defecto: <strong>admin</strong> / contraseña: <strong>admin123</strong>. Cámbiala luego de tu primer ingreso.</p>
+            </form>
+
+            <!-- Formulario de Registro -->
+            <form id="form-register" class="space-y-4 hidden">
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-bold text-slate-400">Nombre completo</label>
+                    <input type="text" id="register-nombre" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm" placeholder="Ej. María Pérez" required>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-bold text-slate-400">Usuario</label>
+                    <input type="text" id="register-usuario" autocomplete="username" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm" placeholder="Sin espacios" required>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-bold text-slate-400">Contraseña</label>
+                    <input type="password" id="register-password" autocomplete="new-password" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm" placeholder="Mínimo 4 caracteres" required>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-bold text-slate-400">Confirmar contraseña</label>
+                    <input type="password" id="register-password2" autocomplete="new-password" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm" placeholder="Repite tu contraseña" required>
+                </div>
+                <button type="submit" class="w-full py-3 bg-brandGreen text-white font-bold rounded-xl hover:opacity-90 active:scale-[0.98] transition">Crear cuenta</button>
+            </form>
+
+            <p id="auth-error" class="text-xs text-brandRed text-center mt-3 hidden"></p>
+        </div>
+    </div>
+
+    <!-- ================= CONTENEDOR PRINCIPAL DE LA APP (oculto hasta iniciar sesión) ================= -->
+    <div id="app-shell" class="hidden min-h-screen flex flex-col md:flex-row pb-16 md:pb-0">
+
+    <!-- Barra lateral de navegación en escritorio / Header en móvil -->
+    <aside class="hidden md:flex flex-col w-64 bg-darkCard border-r border-darkBorder h-screen sticky top-0 p-5">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-icons-round text-brandBlue text-3xl">account_balance_wallet</span>
+            <div>
+                <h1 class="font-extrabold text-lg tracking-tight">Gestiones Online</h1>
+                <span class="text-xs text-slate-400">Control Financiero</span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 bg-slate-900/60 border border-darkBorder rounded-xl px-3 py-2 mb-4">
+            <span class="material-icons-round text-slate-400 text-lg">account_circle</span>
+            <div class="flex-grow overflow-hidden">
+                <span class="text-xs font-bold block truncate" id="sidebar-user-name">Usuario</span>
+                <span class="text-[10px] text-slate-400 block" id="sidebar-user-role">Miembro</span>
+            </div>
+            <button onclick="cerrarSesion()" title="Cerrar sesión" class="text-slate-400 hover:text-brandRed transition">
+                <span class="material-icons-round text-lg">logout</span>
+            </button>
+        </div>
+
+        <nav class="flex flex-col gap-1 flex-grow">
+            <button onclick="switchView('inicio')" class="nav-btn-sidebar flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition text-left" data-view="inicio">
+                <span class="material-icons-round">home</span> Inicio
+            </button>
+            <button onclick="switchView('ingresos')" class="nav-btn-sidebar flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition text-left" data-view="ingresos">
+                <span class="material-icons-round">trending_up</span> Ingresos
+            </button>
+            <button onclick="switchView('gastos')" class="nav-btn-sidebar flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition text-left" data-view="gastos">
+                <span class="material-icons-round">trending_down</span> Gastos
+            </button>
+            <button onclick="switchView('deudas')" class="nav-btn-sidebar flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition text-left" data-view="deudas">
+                <span class="material-icons-round">assignment_late</span> Deudas
+            </button>
+            <button onclick="switchView('clientes')" class="nav-btn-sidebar flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition text-left" data-view="clientes">
+                <span class="material-icons-round">people</span> Clientes
+            </button>
+            <button onclick="switchView('reportes')" class="nav-btn-sidebar flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition text-left" data-view="reportes">
+                <span class="material-icons-round">bar_chart</span> Reportes
+            </button>
+            <button id="nav-admin-sidebar" onclick="switchView('admin')" class="hidden nav-btn-sidebar items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition text-left" data-view="admin">
+                <span class="material-icons-round">admin_panel_settings</span> Administración
+            </button>
+        </nav>
+
+        <div class="border-t border-darkBorder pt-4">
+            <button onclick="switchView('config')" class="nav-btn-sidebar flex items-center gap-3 w-full px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition text-left" data-view="config">
+                <span class="material-icons-round">settings</span> Configuración
+            </button>
+        </div>
+    </aside>
+
+    <!-- Header para Vista Móvil -->
+    <header class="md:hidden flex items-center justify-between bg-darkCard px-4 py-3 border-b border-darkBorder sticky top-0 z-40">
+        <div class="flex items-center gap-2">
+            <span class="material-icons-round text-brandBlue text-2xl">account_balance_wallet</span>
+            <span class="font-bold text-base">Gestiones Online</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 bg-slate-800 px-2 py-1 rounded-full text-xs" id="connection-status">
+                <span class="material-icons-round text-brandGreen text-sm">wifi</span>
+                <span id="connection-text">Online</span>
+            </div>
+            <button onclick="cerrarSesion()" title="Cerrar sesión" class="text-slate-400 hover:text-brandRed transition">
+                <span class="material-icons-round text-xl">logout</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Área de Contenido Principal -->
+    <main class="flex-grow p-4 md:p-8 max-w-4xl mx-auto w-full">
+
+        <!-- ================= VIEW: INICIO ================= -->
+        <section id="view-inicio" class="app-view space-y-6">
+            <!-- Tarjeta de Saldo Principal -->
+            <div class="bg-gradient-to-br from-slate-900 to-slate-850 p-6 rounded-3xl border border-slate-800 shadow-xl relative overflow-hidden">
+                <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-brandGreen opacity-5 rounded-full blur-2xl"></div>
+
+                <span class="text-xs font-bold text-slate-400 tracking-wider uppercase">Saldo Estimado Total</span>
+                <div class="flex items-baseline gap-2 mt-1">
+                    <h2 class="text-3xl md:text-4xl font-extrabold text-brandGreen" id="total-balance-usd">$0.00</h2>
+                    <span class="text-sm text-slate-400">USD Equiv.</span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-slate-800/80">
+                    <div>
+                        <span class="text-xs text-slate-400 block mb-1">Caja en Bolívares (VES)</span>
+                        <span class="text-lg font-bold" id="balance-ves">0.00 Bs</span>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-400 block mb-1">Caja en Dólares (USDT)</span>
+                        <span class="text-lg font-bold text-brandBlue" id="balance-usdt">0.00 USDT</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resumen Rápido de hoy -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-darkCard p-4 rounded-2xl border border-darkBorder flex items-center gap-3">
+                    <div class="p-2 bg-brandGreen/10 rounded-xl text-brandGreen">
+                        <span class="material-icons-round">trending_up</span>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-slate-400 block uppercase font-semibold">Ingresos Hoy</span>
+                        <span class="text-xs md:text-sm font-bold" id="today-income">0 Bs / 0 $</span>
+                    </div>
+                </div>
+
+                <div class="bg-darkCard p-4 rounded-2xl border border-darkBorder flex items-center gap-3">
+                    <div class="p-2 bg-brandRed/10 rounded-xl text-brandRed">
+                        <span class="material-icons-round">trending_down</span>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-slate-400 block uppercase font-semibold">Gastos Hoy</span>
+                        <span class="text-xs md:text-sm font-bold" id="today-expense">0 Bs / 0 $</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Caja de Asistente Financiero Automatizado -->
+            <div class="bg-brandBlue/10 border border-brandBlue/30 rounded-3xl p-5 relative overflow-hidden">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-8 h-8 rounded-full bg-brandBlue flex items-center justify-center">
+                        <span class="material-icons-round text-white text-base">psychology</span>
+                    </div>
+                    <h3 class="font-bold text-sm text-brandBlue">Asistente de Estrategia Financiera</h3>
+                </div>
+                <div id="ai-suggestion" class="text-xs md:text-sm leading-relaxed text-slate-200">
+                    Cargando recomendaciones en tiempo real...
+                </div>
+            </div>
+
+            <!-- Últimos Movimientos Rápidos -->
+            <div class="bg-darkCard rounded-2xl border border-darkBorder p-5">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-sm uppercase text-slate-400 tracking-wider">Movimientos Recientes</h3>
+                    <button onclick="switchView('reportes')" class="text-xs text-brandBlue font-bold hover:underline">Ver Todo</button>
+                </div>
+                <div class="space-y-3" id="recent-transactions-list">
+                    <!-- Lista dinâmica de transacciones -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= VIEW: INGRESOS ================= -->
+        <section id="view-ingresos" class="app-view hidden space-y-6">
+            <h2 class="text-xl font-bold border-l-4 border-brandBlue pl-3">Registrar Ingreso de Fondos</h2>
+
+            <form id="form-ingreso" class="bg-darkCard border border-darkBorder p-6 rounded-2xl space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-bold text-slate-400">Monto</label>
+                        <input type="number" step="0.01" id="ingreso-monto" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm" placeholder="0.00" required>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-bold text-slate-400">Moneda</label>
+                        <select id="ingreso-moneda" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm" required>
+                            <option value="VES">Bolívares (VES)</option>
+                            <option value="USDT">USDT (Dólares)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-bold text-slate-400">Concepto / Descripción</label>
+                    <input type="text" id="ingreso-concepto" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm" placeholder="Ej. Gestión de trámites / Pago de CV" required>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-bold text-slate-400">Cliente Asociado</label>
+                        <select id="ingreso-cliente" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm">
+                            <option value="">Particular / Público general</option>
+                            <!-- Llenado dinámico -->
+                        </select>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-bold text-slate-400">Método de Pago</label>
+                        <select id="ingreso-metodo" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm" required>
+                            <option value="Pago Móvil">Pago Móvil</option>
+                            <option value="USDT - Binance">USDT - Binance Pay</option>
+                            <option value="Efectivo VES">Efectivo VES</option>
+                            <option value="Efectivo USD">Efectivo USD</option>
+                            <option value="Transferencia Bancaria">Transferencia Bancaria</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-bold text-slate-400">Fecha del Registro</label>
+                    <input type="date" id="ingreso-fecha" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm" required>
+                </div>
+
+                <button type="submit" class="w-full py-3 bg-brandGreen text-white font-bold rounded-xl hover:opacity-90 active:scale-[0.98] transition">Guardar Ingreso</button>
+            </form>
+        </section>
+
+        <!-- ================= VIEW: GASTOS ================= -->
+        <section id="view-gastos" class="app-view hidden space-y-6">
+            <h2 class="text-xl font-bold border-l-4 border-brandRed pl-3">Registrar Gasto o Egreso</h2>
+
+            <form id="form-gasto" class="bg-darkCard border border-darkBorder p-6 rounded-2xl space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-bold text-slate-400">Monto</label>
+                        <input type="number" step="0.01" id="gasto-monto" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandRed outline-none text-sm" placeholder="0.00" required>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-bold text-slate-400">Moneda</label>
+                        <select id="gasto-moneda" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandRed outline-none text-sm" required>
+                            <option value="VES">Bolívares (VES)</option>
+                            <option value="USDT">USDT (Dólares)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-bold text-slate-400">Categoría</label>
+                        <select id="gasto-categoria" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandRed outline-none text-sm" required>
+                            <option value="Servicios">Servicios (Luz, Internet, etc)</option>
+                            <option value="Materiales">Materiales e Insumos</option>
+                            <option value="Marketing">Publicidad y Promoción</option>
+                            <option value="Impuestos">Impuestos / Comisiones</option>
+                            <option value="Personal">Gastos Personales / Retiros</option>
+                            <option value="Otros">Otros egresos menores</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-bold text-slate-400">Fecha del Gasto</label>
+                        <input type="date" id="gasto-fecha" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandRed outline-none text-sm" required>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-bold text-slate-400">Descripción detallada</label>
+                    <input type="text" id="gasto-descripcion" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandRed outline-none text-sm" placeholder="Ej. Compra de resmas de papel para gestiones" required>
+                </div>
+
+                <button type="submit" class="w-full py-3 bg-brandRed text-white font-bold rounded-xl hover:opacity-90 active:scale-[0.98] transition">Guardar Gasto</button>
+            </form>
+        </section>
+
+        <!-- ================= VIEW: DEUDAS ================= -->
+        <section id="view-deudas" class="app-view hidden space-y-6">
+            <h2 class="text-xl font-bold border-l-4 border-yellow-500 pl-3">Control de Pasivos y Deudas</h2>
+
+            <!-- Formulario de Deudas -->
+            <div class="bg-darkCard border border-darkBorder p-5 rounded-2xl space-y-4">
+                <h3 class="font-bold text-sm text-yellow-500 uppercase">Añadir Deuda / Compromiso</h3>
+                <form id="form-deuda" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-bold text-slate-400">Acreedor</label>
+                        <input type="text" id="deuda-acreedor" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" placeholder="Ej. Banco de Venezuela / Proveedor" required>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="flex flex-col gap-1">
+                            <label class="text-xs font-bold text-slate-400">Monto Total</label>
+                            <input type="number" step="0.01" id="deuda-monto" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" placeholder="0.00" required>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label class="text-xs font-bold text-slate-400">Moneda</label>
+                            <select id="deuda-moneda" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" required>
+                                <option value="VES">VES</option>
+                                <option value="USDT">USDT</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-bold text-slate-400">Fecha de Vencimiento</label>
+                        <input type="date" id="deuda-vencimiento" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" required>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-bold text-slate-400">Tasa de Interés (% / Opcional)</label>
+                        <input type="number" step="0.1" id="deuda-interes" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" value="0">
+                    </div>
+
+                    <!-- Pregunta Cashea -->
+                    <div class="md:col-span-2 bg-slate-900/60 border border-darkBorder rounded-xl p-4 space-y-3">
+                        <label class="flex items-center gap-3 cursor-pointer select-none">
+                            <input type="checkbox" id="deuda-es-cashea" class="w-4 h-4 accent-yellow-500" onchange="toggleCamposCashea()">
+                            <span class="text-sm font-bold text-slate-200">¿Es una deuda de Cashea (pago por cuotas)?</span>
+                        </label>
+                        <div id="campos-cashea" class="hidden grid grid-cols-2 gap-3 pt-1">
+                            <div class="flex flex-col gap-1">
+                                <label class="text-xs font-bold text-slate-400">Número total de cuotas</label>
+                                <input type="number" min="1" step="1" id="deuda-total-cuotas" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" placeholder="Ej. 4">
+                            </div>
+                            <div class="flex flex-col gap-1">
+                                <label class="text-xs font-bold text-slate-400">Monto por cuota</label>
+                                <input type="number" step="0.01" id="deuda-monto-cuota" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" placeholder="0.00">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <button type="submit" class="w-full py-3 bg-yellow-500 text-slate-950 font-bold rounded-xl hover:opacity-90 transition">Registrar Deuda</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Listado de Deudas -->
+            <div class="bg-darkCard rounded-2xl border border-darkBorder p-5">
+                <h3 class="font-bold text-sm text-slate-400 uppercase tracking-wider mb-4">Deudas Registradas</h3>
+                <div class="space-y-3" id="debts-list">
+                    <!-- Lista dinámica -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= VIEW: CLIENTES ================= -->
+        <section id="view-clientes" class="app-view hidden space-y-6">
+            <h2 class="text-xl font-bold border-l-4 border-teal-500 pl-3">Directorio de Clientes</h2>
+
+            <form id="form-cliente" class="bg-darkCard border border-darkBorder p-5 rounded-2xl grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-bold text-slate-400">Nombre Completo</label>
+                    <input type="text" id="cliente-nombre" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-teal-500 outline-none text-sm" placeholder="Ej. Carlos Mendoza" required>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-bold text-slate-400">Teléfono (WhatsApp)</label>
+                    <input type="text" id="cliente-telefono" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-teal-500 outline-none text-sm" placeholder="Ej. +58 412..." required>
+                </div>
+                <button type="submit" class="py-3 bg-teal-500 text-slate-950 font-bold rounded-xl hover:opacity-90 transition">Agregar Cliente</button>
+            </form>
+
+            <div class="bg-darkCard rounded-2xl border border-darkBorder p-5">
+                <h3 class="font-bold text-sm text-slate-400 uppercase tracking-wider mb-4">Cartera de Clientes</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="clients-grid">
+                    <!-- Llenado dinámico -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= VIEW: REPORTES ================= -->
+        <section id="view-reportes" class="app-view hidden space-y-6">
+            <h2 class="text-xl font-bold border-l-4 border-indigo-500 pl-3">Estados Financieros e Historial</h2>
+
+            <div class="bg-darkCard rounded-2xl border border-darkBorder p-5 space-y-4">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                    <h3 class="font-bold text-sm text-slate-400 uppercase tracking-wider">Historial de Transacciones</h3>
+                    <div class="flex gap-2 w-full md:w-auto">
+                        <button onclick="exportToJSON()" class="flex items-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs transition">
+                            <span class="material-icons-round text-sm">download</span> Descargar JSON
+                        </button>
+                        <button onclick="window.print()" class="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg text-xs transition">
+                            <span class="material-icons-round text-sm">print</span> Imprimir / PDF
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2">
+                    <select id="filter-type" onchange="renderHistoryTable()" class="bg-darkBg border border-darkBorder p-2 rounded-xl text-xs outline-none">
+                        <option value="all">Todos los tipos</option>
+                        <option value="ingreso">Ingresos</option>
+                        <option value="gasto">Gastos</option>
+                    </select>
+                    <select id="filter-currency" onchange="renderHistoryTable()" class="bg-darkBg border border-darkBorder p-2 rounded-xl text-xs outline-none">
+                        <option value="all">Todas las monedas</option>
+                        <option value="VES">VES (Bs)</option>
+                        <option value="USDT">USDT ($)</option>
+                    </select>
+                    <button onclick="clearAllTransactions()" class="p-2 border border-brandRed/30 text-brandRed bg-brandRed/5 rounded-xl hover:bg-brandRed/15 text-xs font-bold transition">Limpiar Todo</button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="border-b border-darkBorder text-slate-400">
+                                <th class="pb-3 font-semibold">Fecha</th>
+                                <th class="pb-3 font-semibold">Tipo</th>
+                                <th class="pb-3 font-semibold">Detalle / Concepto</th>
+                                <th class="pb-3 font-semibold text-right">Monto</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body" class="divide-y divide-slate-800/50">
+                            <!-- Filas dinámicas -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= VIEW: ADMINISTRACIÓN (solo admin) ================= -->
+        <section id="view-admin" class="app-view hidden space-y-6">
+            <h2 class="text-xl font-bold border-l-4 border-purple-500 pl-3">Panel de Administrador</h2>
+
+            <div class="grid grid-cols-3 gap-3">
+                <div class="bg-darkCard p-4 rounded-2xl border border-darkBorder text-center">
+                    <span class="text-2xl font-extrabold text-purple-400 block" id="admin-total-usuarios">0</span>
+                    <span class="text-[10px] text-slate-400 uppercase font-semibold">Usuarios</span>
+                </div>
+                <div class="bg-darkCard p-4 rounded-2xl border border-darkBorder text-center">
+                    <span class="text-2xl font-extrabold text-brandGreen block" id="admin-total-movimientos">0</span>
+                    <span class="text-[10px] text-slate-400 uppercase font-semibold">Movimientos</span>
+                </div>
+                <div class="bg-darkCard p-4 rounded-2xl border border-darkBorder text-center">
+                    <span class="text-2xl font-extrabold text-yellow-500 block" id="admin-total-deudas">0</span>
+                    <span class="text-[10px] text-slate-400 uppercase font-semibold">Deudas activas</span>
+                </div>
+            </div>
+
+            <div class="bg-darkCard rounded-2xl border border-darkBorder p-5">
+                <h3 class="font-bold text-sm text-slate-400 uppercase tracking-wider mb-4">Usuarios Registrados</h3>
+                <div class="space-y-3" id="admin-users-list">
+                    <!-- Llenado dinámico -->
+                </div>
+            </div>
+
+            <div class="bg-darkCard border border-darkBorder p-5 rounded-2xl space-y-3">
+                <h3 class="font-bold text-sm text-slate-300 uppercase">Tasa de Cambio BCV (global)</h3>
+                <p class="text-[11px] text-slate-400">Esta tasa aplica para todos los usuarios de la plataforma. Se sincroniza automáticamente todos los días a partir de las 6:00pm y también al abrir la aplicación.</p>
+                <button onclick="sincronizarTasaBCV().then(()=>{actualizarPanelPrincipal(false); renderizarAdmin();})" class="py-2 px-5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs transition">Forzar sincronización ahora</button>
+            </div>
+
+            <div class="bg-darkCard border border-darkBorder p-5 rounded-2xl space-y-4">
+                <h3 class="font-bold text-sm text-brandRed uppercase">Zona de Peligro (Global)</h3>
+                <p class="text-xs text-slate-400">Esto borrará TODA la base de datos: usuarios, ingresos, gastos, deudas y clientes de todas las cuentas. Úsalo con extrema precaución.</p>
+                <button onclick="factoryResetGlobal()" class="py-3 px-6 border border-brandRed text-brandRed bg-brandRed/5 hover:bg-brandRed/15 rounded-xl font-bold text-sm transition">Restablecer Aplicación Completa</button>
+            </div>
+        </section>
+
+        <!-- ================= VIEW: CONFIGURACIÓN ================= -->
+        <section id="view-config" class="app-view hidden space-y-6">
+            <h2 class="text-xl font-bold border-l-4 border-slate-500 pl-3">Ajustes del Sistema</h2>
+
+            <div class="bg-darkCard border border-darkBorder p-5 rounded-2xl space-y-4">
+                <h3 class="font-bold text-sm text-slate-300 uppercase">Tasa de Cambio del Día</h3>
+                <div class="flex items-end gap-3 max-w-sm">
+                    <div class="flex flex-col gap-1 flex-grow">
+                        <label class="text-xs font-bold text-slate-400">Valor de 1 USDT en Bolívares (VES)</label>
+                        <input type="number" step="0.01" id="config-tasa" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm" placeholder="Ej. 40.00" value="40.00">
+                    </div>
+                    <button onclick="guardarTasaCambio()" class="py-3 px-6 bg-brandBlue text-white font-bold rounded-xl hover:opacity-90 transition text-sm">Actualizar</button>
+                </div>
+                <p class="text-[11px] text-slate-400">Esta tasa se utiliza para calcular el equivalente en USD unificado en el panel de inicio. Se actualiza automáticamente usando la cotización oficial del BCV al abrir la app y todos los días a partir de las <strong>6:00pm</strong> (mientras la app permanezca abierta o se vuelva a abrir después de esa hora).</p>
+            </div>
+
+            <div class="bg-darkCard border border-darkBorder p-5 rounded-2xl space-y-4">
+                <h3 class="font-bold text-sm text-slate-300 uppercase">Mi Cuenta</h3>
+                <p class="text-xs text-slate-400">Sesión iniciada como <strong id="config-usuario-actual">-</strong>.</p>
+                <button onclick="cerrarSesion()" class="py-3 px-6 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-sm transition">Cerrar Sesión</button>
+            </div>
+
+            <div class="bg-darkCard border border-darkBorder p-5 rounded-2xl space-y-4">
+                <h3 class="font-bold text-sm text-brandRed uppercase">Zona de Peligro</h3>
+                <p class="text-xs text-slate-400">Al presionar el siguiente botón borrarás por completo TUS datos locales (ingresos, gastos, deudas y clientes). Tu cuenta de usuario permanecerá activa. Asegúrate de respaldar previamente con el botón de Descargar JSON en Reportes.</p>
+                <button onclick="factoryReset()" class="py-3 px-6 border border-brandRed text-brandRed bg-brandRed/5 hover:bg-brandRed/15 rounded-xl font-bold text-sm transition">Borrar Mis Datos</button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Barra de Navegación Inferior para Vista Móvil -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-darkCard border-t border-darkBorder flex justify-around items-center z-50">
+        <button onclick="switchView('inicio')" class="nav-btn-mobile flex flex-col items-center justify-center gap-1 w-1/6 text-slate-400 transition" data-view="inicio">
+            <span class="material-icons-round text-[22px]">home</span>
+            <span class="text-[9px]">Inicio</span>
+        </button>
+        <button onclick="switchView('ingresos')" class="nav-btn-mobile flex flex-col items-center justify-center gap-1 w-1/6 text-slate-400 transition" data-view="ingresos">
+            <span class="material-icons-round text-[22px]">trending_up</span>
+            <span class="text-[9px]">Ingresos</span>
+        </button>
+        <button onclick="switchView('gastos')" class="nav-btn-mobile flex flex-col items-center justify-center gap-1 w-1/6 text-slate-400 transition" data-view="gastos">
+            <span class="material-icons-round text-[22px]">trending_down</span>
+            <span class="text-[9px]">Gastos</span>
+        </button>
+        <button onclick="switchView('deudas')" class="nav-btn-mobile flex flex-col items-center justify-center gap-1 w-1/6 text-slate-400 transition" data-view="deudas">
+            <span class="material-icons-round text-[22px]">assignment_late</span>
+            <span class="text-[9px]">Deudas</span>
+        </button>
+        <button onclick="switchView('clientes')" class="nav-btn-mobile flex flex-col items-center justify-center gap-1 w-1/6 text-slate-400 transition" data-view="clientes">
+            <span class="material-icons-round text-[22px]">people</span>
+            <span class="text-[9px]">Clientes</span>
+        </button>
+        <button onclick="switchView('reportes')" class="nav-btn-mobile flex flex-col items-center justify-center gap-1 w-1/6 text-slate-400 transition" data-view="reportes">
+            <span class="material-icons-round text-[22px]">bar_chart</span>
+            <span class="text-[9px]">Reportes</span>
+        </button>
+    </nav>
+
+    </div><!-- /#app-shell -->
+
+    <!-- Código Javascript del Sistema -->
+    <script>
+        // ============ 1. Inicialización de Base de Datos Dexie (multiusuario) ============
+        const db = new Dexie("GestionesOnlineFinanzasV2");
+        db.version(1).stores({
+            usuarios: '++id, usuario, rol',
+            ingresos: '++id, usuarioId, fecha, monto, moneda, concepto, cliente, metodoPago',
+            gastos: '++id, usuarioId, fecha, categoria, monto, moneda, descripcion',
+            deudas: '++id, usuarioId, acreedor, monto, moneda, vencimiento, interes, estado, esCashea',
+            clientes: '++id, usuarioId, nombre, telefono',
+            config: 'clave, valor'
+        });
+
+        // Tasa de cambio global por defecto
+        let TASA_USDT_A_VES = 40.0;
+
+        // Usuario con sesión activa (objeto completo de la tabla usuarios)
+        let usuarioActual = null;
+
+        // ============ 2. Sistema de Notificaciones Toast ============
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            let bgClass = 'bg-brandGreen';
+            let icon = 'check_circle';
+            if (type === 'error') {
+                bgClass = 'bg-brandRed';
+                icon = 'error';
+            } else if (type === 'warning') {
+                bgClass = 'bg-yellow-500 text-slate-950';
+                icon = 'warning';
+            } else if (type === 'info') {
+                bgClass = 'bg-brandBlue';
+                icon = 'info';
+            }
+
+            toast.className = `${bgClass} flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-xs font-bold transition-all transform translate-y-5 opacity-0 duration-300 pointer-events-auto`;
+            toast.innerHTML = `
+                <span class="material-icons-round text-base">${icon}</span>
+                <span>${message}</span>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-5', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-5', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // ============ 3. AUTENTICACIÓN ============
+
+        // Hash simple con Web Crypto (SHA-256), funciona sin conexión a internet
+        async function hashTexto(texto) {
+            const enc = new TextEncoder().encode(texto);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', enc);
+            return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        function mostrarTabAuth(tab) {
+            const loginBtn = document.getElementById('tab-login-btn');
+            const registerBtn = document.getElementById('tab-register-btn');
+            const loginForm = document.getElementById('form-login');
+            const registerForm = document.getElementById('form-register');
+            document.getElementById('auth-error').classList.add('hidden');
+
+            if (tab === 'login') {
+                loginBtn.classList.add('auth-tab-active');
+                registerBtn.classList.remove('auth-tab-active');
+                loginForm.classList.remove('hidden');
+                registerForm.classList.add('hidden');
+            } else {
+                registerBtn.classList.add('auth-tab-active');
+                loginBtn.classList.remove('auth-tab-active');
+                registerForm.classList.remove('hidden');
+                loginForm.classList.add('hidden');
+            }
+        }
+
+        function mostrarErrorAuth(msg) {
+            const el = document.getElementById('auth-error');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+        }
+
+        // Crea el usuario administrador por defecto la primera vez que corre la app
+        async function asegurarAdminPorDefecto() {
+            const total = await db.usuarios.count();
+            if (total === 0) {
+                const passHash = await hashTexto('admin123');
+                await db.usuarios.add({
+                    usuario: 'admin',
+                    nombre: 'Administrador',
+                    passHash,
+                    rol: 'admin',
+                    fechaRegistro: new Date().toISOString().split('T')[0]
+                });
+            }
+        }
+
+        document.getElementById('form-login').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const usuario = document.getElementById('login-usuario').value.trim().toLowerCase();
+            const password = document.getElementById('login-password').value;
+
+            const user = await db.usuarios.where('usuario').equals(usuario).first();
+            if (!user) {
+                mostrarErrorAuth('Usuario no encontrado.');
+                return;
+            }
+            const hash = await hashTexto(password);
+            if (hash !== user.passHash) {
+                mostrarErrorAuth('Contraseña incorrecta.');
+                return;
+            }
+            iniciarSesionComo(user);
+        });
+
+        document.getElementById('form-register').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const nombre = document.getElementById('register-nombre').value.trim();
+            const usuario = document.getElementById('register-usuario').value.trim().toLowerCase().replace(/\s+/g, '');
+            const password = document.getElementById('register-password').value;
+            const password2 = document.getElementById('register-password2').value;
+
+            if (password.length < 4) {
+                mostrarErrorAuth('La contraseña debe tener al menos 4 caracteres.');
+                return;
+            }
+            if (password !== password2) {
+                mostrarErrorAuth('Las contraseñas no coinciden.');
+                return;
+            }
+            const existente = await db.usuarios.where('usuario').equals(usuario).first();
+            if (existente) {
+                mostrarErrorAuth('Ese nombre de usuario ya existe, elige otro.');
+                return;
+            }
+
+            const passHash = await hashTexto(password);
+            const nuevoId = await db.usuarios.add({
+                usuario,
+                nombre,
+                passHash,
+                rol: 'user',
+                fechaRegistro: new Date().toISOString().split('T')[0]
+            });
+
+            showToast('Cuenta creada exitosamente. ¡Bienvenido!');
+            const user = await db.usuarios.get(nuevoId);
+            iniciarSesionComo(user);
+        });
+
+        function iniciarSesionComo(user) {
+            usuarioActual = user;
+            localStorage.setItem('sesion_usuario_id', String(user.id));
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('app-shell').classList.remove('hidden');
+            document.getElementById('app-shell').classList.add('flex');
+            inicializarAppTrasLogin();
+        }
+
+        function cerrarSesion() {
+            if (!confirm('¿Deseas cerrar tu sesión?')) return;
+            localStorage.removeItem('sesion_usuario_id');
+            window.location.reload();
+        }
+
+        // Intenta restaurar sesión previa guardada en localStorage
+        async function intentarRestaurarSesion() {
+            await asegurarAdminPorDefecto();
+            const idGuardado = localStorage.getItem('sesion_usuario_id');
+            if (idGuardado) {
+                const user = await db.usuarios.get(parseInt(idGuardado));
+                if (user) {
+                    iniciarSesionComo(user);
+                    return;
+                }
+            }
+            // No hay sesión: mostrar pantalla de autenticación
+            document.getElementById('auth-screen').classList.remove('hidden');
+        }
+
+        // ============ 4. Manejador de Vistas (SPA) ============
+        function switchView(viewId) {
+            document.querySelectorAll('.app-view').forEach(v => v.classList.add('hidden'));
+            document.getElementById(`view-${viewId}`).classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn-mobile').forEach(btn => {
+                if (btn.getAttribute('data-view') === viewId) {
+                    btn.classList.add('active-tab');
+                } else {
+                    btn.classList.remove('active-tab');
+                }
+            });
+
+            document.querySelectorAll('.nav-btn-sidebar').forEach(btn => {
+                if (btn.getAttribute('data-view') === viewId) {
+                    btn.classList.add('bg-slate-800', 'text-white', 'border-l-4', 'border-brandBlue');
+                } else {
+                    btn.classList.remove('bg-slate-800', 'text-white', 'border-l-4', 'border-brandBlue');
+                }
+            });
+
+            if (viewId === 'inicio') {
+                actualizarPanelPrincipal(false);
+            } else if (viewId === 'deudas') {
+                renderizarDeudas();
+            } else if (viewId === 'clientes') {
+                renderizarClientes();
+            } else if (viewId === 'reportes') {
+                renderHistoryTable();
+            } else if (viewId === 'admin') {
+                renderizarAdmin();
+            } else if (viewId === 'config') {
+                document.getElementById('config-usuario-actual').textContent = `${usuarioActual.nombre} (@${usuarioActual.usuario})`;
+            }
+        }
+
+        // ============ 5. Tasa BCV: sincronización + regla de "siempre a las 6pm" ============
+        async function sincronizarTasaBCV() {
+            try {
+                const res = await fetch("https://ve.dolarapi.com/v1/cotizaciones/oficiales");
+                if (!res.ok) throw new Error("Fallo de conexión.");
+
+                const datos = await res.json();
+                const dolarBCV = datos.find(m => m.moneda === "USD");
+
+                if (dolarBCV && dolarBCV.promedio) {
+                    const tasaOficial = parseFloat(dolarBCV.promedio);
+                    await db.config.put({ clave: 'tasa_cambio', valor: tasaOficial });
+                    await db.config.put({ clave: 'ultima_sync_bcv_fecha', valor: new Date().toISOString().split('T')[0] });
+                    await db.config.put({ clave: 'ultima_sync_bcv_hora', valor: new Date().toLocaleTimeString('es-VE') });
+                    TASA_USDT_A_VES = tasaOficial;
+
+                    const inputTasa = document.getElementById('config-tasa');
+                    if (inputTasa) inputTasa.value = tasaOficial;
+
+                    showToast(`Tasa BCV actualizada: Bs. ${tasaOficial.toFixed(2)}`, 'info');
+                    return tasaOficial;
+                }
+            } catch (error) {
+                console.warn("No se pudo obtener la tasa en tiempo real (modo offline). Se usará la última tasa guardada.");
+            }
+            return null;
+        }
+
+        // Revisa cada minuto si ya son las 6:00pm y aún no se ha sincronizado hoy después de esa hora.
+        // También se ejecuta al abrir la app: si se abre después de las 6pm y todavía no hubo sync de hoy, sincroniza de inmediato.
+        async function verificarActualizacionAutomatica6PM() {
+            const ahora = new Date();
+            const hoyStr = ahora.toISOString().split('T')[0];
+            const horaActual = ahora.getHours();
+
+            const cfg = await db.config.get('ultima_sync_bcv_fecha');
+            const ultimaFechaSync = cfg ? cfg.valor : null;
+
+            if (horaActual >= 18 && ultimaFechaSync !== hoyStr) {
+                const nuevaTasa = await sincronizarTasaBCV();
+                if (nuevaTasa) {
+                    actualizarPanelPrincipal(false);
+                }
+            }
+        }
+        // Revisar cada 60 segundos mientras la app esté abierta
+        setInterval(verificarActualizacionAutomatica6PM, 60000);
+
+        // ============ 6. Carga y Sincronización de Datos en Dashboard ============
+        async function actualizarPanelPrincipal(intentarSyncBCV = false) {
+            const tasaCfg = await db.config.get('tasa_cambio');
+            if (tasaCfg) {
+                TASA_USDT_A_VES = parseFloat(tasaCfg.valor);
+                document.getElementById('config-tasa').value = TASA_USDT_A_VES;
+            }
+
+            if (intentarSyncBCV) {
+                const nuevaTasa = await sincronizarTasaBCV();
+                if (nuevaTasa) TASA_USDT_A_VES = nuevaTasa;
+                // Además, evaluar de una vez la regla de las 6pm por si aplica
+                verificarActualizacionAutomatica6PM();
+            }
+
+            const ingresos = await db.ingresos.where('usuarioId').equals(usuarioActual.id).toArray();
+            const gastos = await db.gastos.where('usuarioId').equals(usuarioActual.id).toArray();
+            const deudas = await db.deudas.where('usuarioId').equals(usuarioActual.id).toArray();
+
+            const hoy = new Date().toISOString().split('T')[0];
+
+            let totalVES = 0;
+            let totalUSDT = 0;
+            let ingresosHoyVES = 0;
+            let ingresosHoyUSDT = 0;
+            let gastosHoyVES = 0;
+            let gastosHoyUSDT = 0;
+
+            ingresos.forEach(i => {
+                const monto = parseFloat(i.monto);
+                if (i.moneda === 'VES') {
+                    totalVES += monto;
+                    if (i.fecha === hoy) ingresosHoyVES += monto;
+                } else {
+                    totalUSDT += monto;
+                    if (i.fecha === hoy) ingresosHoyUSDT += monto;
+                }
+            });
+
+            gastos.forEach(g => {
+                const monto = parseFloat(g.monto);
+                if (g.moneda === 'VES') {
+                    totalVES -= monto;
+                    if (g.fecha === hoy) gastosHoyVES += monto;
+                } else {
+                    totalUSDT -= monto;
+                    if (g.fecha === hoy) gastosHoyUSDT += monto;
+                }
+            });
+
+            const balanceTotalUSD = totalUSDT + (totalVES / TASA_USDT_A_VES);
+
+            document.getElementById('total-balance-usd').textContent = `$${balanceTotalUSD.toFixed(2)}`;
+            document.getElementById('balance-ves').textContent = `${totalVES.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} VES`;
+            document.getElementById('balance-usdt').textContent = `${totalUSDT.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`;
+
+            document.getElementById('today-income').textContent = `${ingresosHoyVES.toFixed(0)} Bs / ${ingresosHoyUSDT.toFixed(0)} $`;
+            document.getElementById('today-expense').textContent = `${gastosHoyVES.toFixed(0)} Bs / ${gastosHoyUSDT.toFixed(0)} $`;
+
+            procesarAsistenteInteligente(balanceTotalUSD, deudas);
+            renderizarMovimientosRecientes(ingresos, gastos);
+        }
+
+        // ============ 7. Motor de Sugerencias Inteligentes de Pago (Asistente) ============
+        function procesarAsistenteInteligente(saldoEquivUSD, deudas) {
+            const container = document.getElementById('ai-suggestion');
+            const deudasPendientes = deudas.filter(d => d.estado === 'Pendiente');
+
+            if (deudasPendientes.length === 0) {
+                container.innerHTML = `🌟 <strong>¡Fantástico!</strong> No posees deudas vigentes registradas. Tienes plena liquidez para enfocar tus ingresos del día en reinversión de servicios o campañas de marketing.`;
+                return;
+            }
+
+            const deudasUrgentes = [...deudasPendientes].sort((a, b) => new Date(a.vencimiento) - new Date(b.vencimiento));
+            const masUrgente = deudasUrgentes[0];
+
+            let deudaTotalUSD = 0;
+            deudasPendientes.forEach(d => {
+                const m = parseFloat(d.montoPendiente ?? d.monto);
+                deudaTotalUSD += d.moneda === 'VES' ? (m / TASA_USDT_A_VES) : m;
+            });
+
+            let html = `Tienes un total equivalente de deudas pendientes por <strong>$${deudaTotalUSD.toFixed(2)} USD</strong>.<br><br>`;
+
+            if (saldoEquivUSD <= 0) {
+                html += `⚠️ Tienes saldo negativo o nulo en caja. Se recomienda posponer retiros personales y priorizar un abono, aunque sea pequeño, al compromiso con <strong>${masUrgente.acreedor}</strong> (Vence: ${masUrgente.vencimiento}).`;
+            } else {
+                const fondoEmergencia = saldoEquivUSD * 0.20;
+                const fondoPago = saldoEquivUSD * 0.50;
+                const fondoOperaciones = saldoEquivUSD * 0.30;
+
+                html += `💸 <strong>Planificación inteligente propuesta:</strong>
+                <ul class="list-disc pl-5 mt-2 space-y-1">
+                    <li>Reserva el 20% (<strong>$${fondoEmergencia.toFixed(2)}</strong>) para tu fondo de contingencia preventivo.</li>
+                    <li>Utiliza el 50% (<strong>$${fondoPago.toFixed(2)}</strong>) para abonar prioritariamente al acreedor <strong>${masUrgente.acreedor}</strong>, aunque sea un adelanto parcial.</li>
+                    <li>Mantén el 30% restante (<strong>$${fondoOperaciones.toFixed(2)}</strong>) disponible en caja chica para gastos operativos comunes.</li>
+                </ul>`;
+            }
+
+            container.innerHTML = html;
+        }
+
+        // ============ 8. Registro de Ingresos ============
+        document.getElementById('form-ingreso').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const ing = {
+                usuarioId: usuarioActual.id,
+                monto: parseFloat(document.getElementById('ingreso-monto').value),
+                moneda: document.getElementById('ingreso-moneda').value,
+                concepto: document.getElementById('ingreso-concepto').value,
+                cliente: document.getElementById('ingreso-cliente').value || 'Particular',
+                metodoPago: document.getElementById('ingreso-metodo').value,
+                fecha: document.getElementById('ingreso-fecha').value
+            };
+
+            await db.ingresos.add(ing);
+            showToast('¡Ingreso guardado exitosamente!');
+            document.getElementById('form-ingreso').reset();
+            establecerFechaPorDefecto();
+            switchView('inicio');
+        });
+
+        // ============ 9. Registro de Gastos ============
+        document.getElementById('form-gasto').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const gas = {
+                usuarioId: usuarioActual.id,
+                monto: parseFloat(document.getElementById('gasto-monto').value),
+                moneda: document.getElementById('gasto-moneda').value,
+                categoria: document.getElementById('gasto-categoria').value,
+                descripcion: document.getElementById('gasto-descripcion').value,
+                fecha: document.getElementById('gasto-fecha').value
+            };
+
+            await db.gastos.add(gas);
+            showToast('¡Gasto guardado con éxito!');
+            document.getElementById('form-gasto').reset();
+            establecerFechaPorDefecto();
+            switchView('inicio');
+        });
+
+        // ============ 10. Registro de Deudas (con soporte Cashea) ============
+        function toggleCamposCashea() {
+            const checked = document.getElementById('deuda-es-cashea').checked;
+            const campos = document.getElementById('campos-cashea');
+            campos.classList.toggle('hidden', !checked);
+            document.getElementById('deuda-total-cuotas').required = checked;
+            document.getElementById('deuda-monto-cuota').required = checked;
+        }
+
+        document.getElementById('form-deuda').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const esCashea = document.getElementById('deuda-es-cashea').checked;
+            const montoBase = parseFloat(document.getElementById('deuda-monto').value);
+            const interes = parseFloat(document.getElementById('deuda-interes').value || 0);
+            const interesCalculado = montoBase * (interes / 100);
+            const montoConInteres = montoBase + (isNaN(interesCalculado) ? 0 : interesCalculado);
+
+            const deu = {
+                usuarioId: usuarioActual.id,
+                acreedor: document.getElementById('deuda-acreedor').value,
+                monto: montoConInteres,
+                montoPendiente: montoConInteres,
+                moneda: document.getElementById('deuda-moneda').value,
+                vencimiento: document.getElementById('deuda-vencimiento').value,
+                interes: interes,
+                estado: 'Pendiente',
+                esCashea: esCashea,
+                totalCuotas: esCashea ? parseInt(document.getElementById('deuda-total-cuotas').value || 0) : null,
+                montoCuota: esCashea ? parseFloat(document.getElementById('deuda-monto-cuota').value || 0) : null,
+                cuotasPagadas: 0
+            };
+
+            await db.deudas.add(deu);
+            showToast(esCashea ? 'Deuda Cashea registrada con su plan de cuotas' : 'Deuda agregada correctamente');
+            document.getElementById('form-deuda').reset();
+            document.getElementById('campos-cashea').classList.add('hidden');
+            establecerFechaPorDefecto();
+            renderizarDeudas();
+        });
+
+        async function renderizarDeudas() {
+            const container = document.getElementById('debts-list');
+            container.innerHTML = '';
+            const deudas = await db.deudas.where('usuarioId').equals(usuarioActual.id).toArray();
+
+            if (deudas.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Sin pasivos registrados por los momentos.</p>`;
+                return;
+            }
+
+            deudas.forEach(d => {
+                const div = document.createElement('div');
+                div.className = 'flex flex-col gap-2 bg-slate-900/60 border border-darkBorder p-3 rounded-xl';
+
+                const esPendiente = d.estado === 'Pendiente';
+                const pendiente = d.montoPendiente ?? d.monto;
+                const pagadoPorc = d.monto > 0 ? Math.min(100, Math.round(((d.monto - pendiente) / d.monto) * 100)) : 100;
+
+                let badgeCashea = '';
+                if (d.esCashea) {
+                    badgeCashea = `<span class="text-[9px] bg-purple-500/20 text-purple-400 font-bold px-2 py-0.5 rounded ml-2">CASHEA · Cuota ${d.cuotasPagadas || 0}/${d.totalCuotas || '-'}</span>`;
+                }
+
+                div.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h4 class="font-bold text-sm ${esPendiente ? 'text-white' : 'text-slate-500 line-through'}">${d.acreedor}${badgeCashea}</h4>
+                            <span class="text-xs text-slate-400 block">Pendiente: ${pendiente.toFixed(2)} / ${d.monto.toFixed(2)} ${d.moneda} - Vence: ${d.vencimiento}</span>
+                        </div>
+                        <div class="flex gap-2">
+                            ${esPendiente ?
+                                `<button onclick="abonarDeuda(${d.id})" class="px-3 py-1 bg-brandGreen/20 text-brandGreen hover:bg-brandGreen/30 text-xs font-bold rounded-lg transition">Abonar</button>` :
+                                `<span class="text-[10px] bg-slate-800 text-slate-400 font-bold px-2 py-1 rounded">Pagada</span>`
+                            }
+                        </div>
+                    </div>
+                    ${esPendiente ? `
+                    <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                        <div class="h-full bg-brandGreen" style="width:${pagadoPorc}%"></div>
+                    </div>` : ''}
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // Abono parcial o pago total de una deuda, según lo que la persona tenga disponible
+        async function abonarDeuda(id) {
+            const deuda = await db.deudas.get(id);
+            if (!deuda || deuda.estado === 'Pagada') return;
+
+            const pendienteActual = deuda.montoPendiente ?? deuda.monto;
+            const entrada = prompt(
+                `Deuda con ${deuda.acreedor}\nPendiente: ${pendienteActual.toFixed(2)} ${deuda.moneda}\n\n¿Cuánto deseas abonar ahora? (puede ser un adelanto parcial)`,
+                pendienteActual.toFixed(2)
+            );
+            if (entrada === null) return;
+
+            const monto = parseFloat(entrada);
+            if (isNaN(monto) || monto <= 0) {
+                showToast('Monto de abono no válido', 'error');
+                return;
+            }
+
+            const abono = Math.min(monto, pendienteActual);
+            const nuevoPendiente = pendienteActual - abono;
+            const nuevoEstado = nuevoPendiente <= 0.01 ? 'Pagada' : 'Pendiente';
+
+            let cuotasPagadas = deuda.cuotasPagadas || 0;
+            if (deuda.esCashea && deuda.montoCuota > 0) {
+                cuotasPagadas = Math.min(deuda.totalCuotas || 999, cuotasPagadas + Math.round(abono / deuda.montoCuota));
+            }
+
+            await db.gastos.add({
+                usuarioId: usuarioActual.id,
+                monto: abono,
+                moneda: deuda.moneda,
+                categoria: 'Servicios',
+                descripcion: `Abono a deuda${deuda.esCashea ? ' Cashea' : ''}: ${deuda.acreedor}`,
+                fecha: new Date().toISOString().split('T')[0]
+            });
+
+            await db.deudas.update(id, {
+                montoPendiente: nuevoPendiente,
+                estado: nuevoEstado,
+                cuotasPagadas
+            });
+
+            showToast(nuevoEstado === 'Pagada' ? 'Deuda saldada por completo 🎉' : `Abono de ${abono.toFixed(2)} ${deuda.moneda} registrado`);
+            renderizarDeudas();
+            actualizarPanelPrincipal(false);
+        }
+
+        // ============ 11. Directorio de Clientes ============
+        document.getElementById('form-cliente').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const cli = {
+                usuarioId: usuarioActual.id,
+                nombre: document.getElementById('cliente-nombre').value,
+                telefono: document.getElementById('cliente-telefono').value
+            };
+
+            await db.clientes.add(cli);
+            showToast('Cliente guardado');
+            document.getElementById('form-cliente').reset();
+            renderizarClientes();
+            actualizarSelectClientes();
+        });
+
+        async function renderizarClientes() {
+            const container = document.getElementById('clients-grid');
+            container.innerHTML = '';
+            const clientes = await db.clientes.where('usuarioId').equals(usuarioActual.id).toArray();
+
+            if (clientes.length === 0) {
+                container.innerHTML = `<p class="col-span-2 text-xs text-slate-400 text-center py-4">No tienes clientes en tu directorio.</p>`;
+                return;
+            }
+
+            clientes.forEach(c => {
+                const div = document.createElement('div');
+                div.className = 'bg-slate-900/60 p-4 rounded-xl border border-darkBorder flex justify-between items-center';
+                div.innerHTML = `
+                    <div>
+                        <h4 class="font-bold text-sm text-teal-400">${c.nombre}</h4>
+                        <span class="text-xs text-slate-400">${c.telefono || 'Sin WhatsApp'}</span>
+                    </div>
+                    <a href="https://wa.me/${c.telefono ? c.telefono.replace(/\D/g,'') : ''}" target="_blank" class="w-8 h-8 rounded-full bg-brandGreen/20 flex items-center justify-center text-brandGreen hover:bg-brandGreen hover:text-slate-950 transition">
+                        <span class="material-icons-round text-sm">chat</span>
+                    </a>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        async function actualizarSelectClientes() {
+            const select = document.getElementById('ingreso-cliente');
+            select.innerHTML = '<option value="">Particular / Público general</option>';
+            const clientes = await db.clientes.where('usuarioId').equals(usuarioActual.id).toArray();
+            clientes.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.nombre;
+                opt.textContent = c.nombre;
+                select.appendChild(opt);
+            });
+        }
+
+        // ============ 12. Movimientos recientes e historial ============
+        function renderizarMovimientosRecientes(ingresos, gastos) {
+            const container = document.getElementById('recent-transactions-list');
+            container.innerHTML = '';
+
+            const combinados = [
+                ...ingresos.map(i => ({ ...i, tipo: 'ingreso' })),
+                ...gastos.map(g => ({ ...g, tipo: 'gasto' }))
+            ].sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, 5);
+
+            if (combinados.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-2">Registra tus primeros ingresos o egresos para ver el flujo.</p>`;
+                return;
+            }
+
+            combinados.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'flex justify-between items-center text-xs pb-2 border-b border-slate-800/60 last:border-0 last:pb-0';
+
+                const esIngreso = item.tipo === 'ingreso';
+                const colorMonto = esIngreso ? 'text-brandGreen' : 'text-brandRed';
+                const prefijo = esIngreso ? '+' : '-';
+
+                div.innerHTML = `
+                    <div>
+                        <span class="font-bold text-slate-200">${item.concepto || item.descripcion}</span>
+                        <span class="text-[10px] text-slate-500 block">${item.fecha} - ${esIngreso ? 'Ingreso' : 'Egreso'}</span>
+                    </div>
+                    <span class="font-extrabold ${colorMonto}">${prefijo}${item.monto} ${item.moneda}</span>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        async function renderHistoryTable() {
+            const ingresos = await db.ingresos.where('usuarioId').equals(usuarioActual.id).toArray();
+            const gastos = await db.gastos.where('usuarioId').equals(usuarioActual.id).toArray();
+
+            const filterType = document.getElementById('filter-type').value;
+            const filterCurrency = document.getElementById('filter-currency').value;
+
+            let combinados = [
+                ...ingresos.map(i => ({ ...i, tipo: 'ingreso', desc: i.concepto })),
+                ...gastos.map(g => ({ ...g, tipo: 'gasto', desc: g.descripcion }))
+            ].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+            if (filterType !== 'all') {
+                combinados = combinados.filter(item => item.tipo === filterType);
+            }
+            if (filterCurrency !== 'all') {
+                combinados = combinados.filter(item => item.moneda === filterCurrency);
+            }
+
+            const tbody = document.getElementById('history-table-body');
+            tbody.innerHTML = '';
+
+            if (combinados.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-slate-400">Ningún movimiento coincide con los criterios.</td></tr>`;
+                return;
+            }
+
+            combinados.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-800/30 transition";
+
+                const esIngreso = item.tipo === 'ingreso';
+                const labelColor = esIngreso ? 'bg-brandGreen/10 text-brandGreen' : 'bg-brandRed/10 text-brandRed';
+                const labelText = esIngreso ? 'ING' : 'EGR';
+                const montoColor = esIngreso ? 'text-brandGreen' : 'text-brandRed';
+                const prefijo = esIngreso ? '+' : '-';
+
+                tr.innerHTML = `
+                    <td class="py-3 text-slate-400">${item.fecha}</td>
+                    <td class="py-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${labelColor}">${labelText}</span></td>
+                    <td class="py-3 font-semibold">${item.desc}</td>
+                    <td class="py-3 text-right font-bold ${montoColor}">${prefijo}${item.monto.toFixed(2)} ${item.moneda}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // ============ 13. Limpieza de datos (por usuario) ============
+        async function clearAllTransactions() {
+            if (confirm("¿Estás seguro de que quieres vaciar todo tu historial de movimientos?")) {
+                await db.ingresos.where('usuarioId').equals(usuarioActual.id).delete();
+                await db.gastos.where('usuarioId').equals(usuarioActual.id).delete();
+                showToast("Historial vaciado con éxito");
+                renderHistoryTable();
+                actualizarPanelPrincipal(false);
+            }
+        }
+
+        async function factoryReset() {
+            if (confirm("Peligro: ¿Quieres borrar TODOS tus datos (ingresos, gastos, deudas y clientes)? Tu cuenta seguirá existiendo.")) {
+                await db.ingresos.where('usuarioId').equals(usuarioActual.id).delete();
+                await db.gastos.where('usuarioId').equals(usuarioActual.id).delete();
+                await db.deudas.where('usuarioId').equals(usuarioActual.id).delete();
+                await db.clientes.where('usuarioId').equals(usuarioActual.id).delete();
+                showToast("Tus datos han sido limpiados. Recargando...");
+                setTimeout(() => window.location.reload(), 1000);
+            }
+        }
+
+        // Reinicio TOTAL de la app (solo administrador) - borra usuarios, datos y configuración
+        async function factoryResetGlobal() {
+            if (usuarioActual.rol !== 'admin') return;
+            if (confirm("PELIGRO EXTREMO: ¿Restablecer TODA la aplicación? Se perderán todos los usuarios, ingresos, gastos, deudas y clientes de TODAS las cuentas.")) {
+                await db.delete();
+                localStorage.clear();
+                showToast("La aplicación ha sido restablecida por completo. Recargando...");
+                setTimeout(() => window.location.reload(), 1200);
+            }
+        }
+
+        // ============ 14. Guardar Tasa de Cambio Manualmente ============
+        async function guardarTasaCambio() {
+            const tasaInput = parseFloat(document.getElementById('config-tasa').value);
+            if (isNaN(tasaInput) || tasaInput <= 0) {
+                showToast('Tasa de cambio no válida', 'error');
+                return;
+            }
+            await db.config.put({ clave: 'tasa_cambio', valor: tasaInput });
+            TASA_USDT_A_VES = tasaInput;
+            showToast('Tasa de cambio guardada');
+            actualizarPanelPrincipal(false);
+        }
+
+        // ============ 15. Exportación a JSON (datos del usuario actual) ============
+        async function exportToJSON() {
+            const exportData = {
+                usuario: usuarioActual.usuario,
+                ingresos: await db.ingresos.where('usuarioId').equals(usuarioActual.id).toArray(),
+                gastos: await db.gastos.where('usuarioId').equals(usuarioActual.id).toArray(),
+                deudas: await db.deudas.where('usuarioId').equals(usuarioActual.id).toArray(),
+                clientes: await db.clientes.where('usuarioId').equals(usuarioActual.id).toArray(),
+                config: await db.config.toArray()
+            };
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "gestiones_online_reporte.json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+            showToast('JSON descargado exitosamente');
+        }
+
+        // ============ 16. Panel de Administrador ============
+        async function renderizarAdmin() {
+            if (usuarioActual.rol !== 'admin') return;
+
+            const usuarios = await db.usuarios.toArray();
+            const todosIngresos = await db.ingresos.toArray();
+            const todosGastos = await db.gastos.toArray();
+            const todasDeudas = await db.deudas.toArray();
+
+            document.getElementById('admin-total-usuarios').textContent = usuarios.length;
+            document.getElementById('admin-total-movimientos').textContent = todosIngresos.length + todosGastos.length;
+            document.getElementById('admin-total-deudas').textContent = todasDeudas.filter(d => d.estado === 'Pendiente').length;
+
+            const container = document.getElementById('admin-users-list');
+            container.innerHTML = '';
+
+            usuarios.forEach(u => {
+                const numIngresos = todosIngresos.filter(i => i.usuarioId === u.id).length;
+                const numGastos = todosGastos.filter(g => g.usuarioId === u.id).length;
+                const numDeudas = todasDeudas.filter(d => d.usuarioId === u.id && d.estado === 'Pendiente').length;
+
+                const div = document.createElement('div');
+                div.className = 'flex justify-between items-center bg-slate-900/60 border border-darkBorder p-3 rounded-xl';
+                div.innerHTML = `
+                    <div>
+                        <h4 class="font-bold text-sm text-white">${u.nombre} <span class="text-slate-500 font-normal">@${u.usuario}</span></h4>
+                        <span class="text-[10px] text-slate-400 block">${numIngresos} ingresos · ${numGastos} gastos · ${numDeudas} deudas activas · Desde ${u.fechaRegistro || '-'}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] font-bold px-2 py-1 rounded ${u.rol === 'admin' ? 'bg-purple-500/20 text-purple-400' : 'bg-slate-800 text-slate-400'}">${u.rol === 'admin' ? 'ADMIN' : 'USUARIO'}</span>
+                        ${u.id !== usuarioActual.id ? `
+                            <button onclick="cambiarRolUsuario(${u.id}, '${u.rol === 'admin' ? 'user' : 'admin'}')" title="Cambiar rol" class="text-slate-400 hover:text-brandBlue transition">
+                                <span class="material-icons-round text-base">swap_horiz</span>
+                            </button>
+                            <button onclick="eliminarUsuario(${u.id})" title="Eliminar usuario" class="text-slate-400 hover:text-brandRed transition">
+                                <span class="material-icons-round text-base">delete</span>
+                            </button>
+                        ` : `<span class="text-[10px] text-slate-500 px-1">(Tú)</span>`}
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        async function cambiarRolUsuario(id, nuevoRol) {
+            await db.usuarios.update(id, { rol: nuevoRol });
+            showToast('Rol de usuario actualizado');
+            renderizarAdmin();
+        }
+
+        async function eliminarUsuario(id) {
+            if (!confirm('¿Eliminar esta cuenta y todos sus datos (ingresos, gastos, deudas, clientes)? Esta acción no se puede deshacer.')) return;
+            await db.ingresos.where('usuarioId').equals(id).delete();
+            await db.gastos.where('usuarioId').equals(id).delete();
+            await db.deudas.where('usuarioId').equals(id).delete();
+            await db.clientes.where('usuarioId').equals(id).delete();
+            await db.usuarios.delete(id);
+            showToast('Usuario eliminado');
+            renderizarAdmin();
+        }
+
+        // ============ 17. Utilidades generales ============
+        function establecerFechaPorDefecto() {
+            const hoy = new Date().toISOString().split('T')[0];
+            document.getElementById('ingreso-fecha').value = hoy;
+            document.getElementById('gasto-fecha').value = hoy;
+            document.getElementById('deuda-vencimiento').value = hoy;
+        }
+
+        function actualizarEstadoConexion() {
+            const indicator = document.getElementById('connection-status');
+            const text = document.getElementById('connection-text');
+            if (!indicator) return;
+            if (navigator.onLine) {
+                indicator.className = "flex items-center gap-2 bg-slate-800 px-2 py-1 rounded-full text-xs text-brandGreen";
+                text.textContent = "Online";
+            } else {
+                indicator.className = "flex items-center gap-2 bg-slate-800 px-2 py-1 rounded-full text-xs text-brandRed";
+                text.textContent = "Offline";
+            }
+        }
+
+        window.addEventListener('online', actualizarEstadoConexion);
+        window.addEventListener('offline', actualizarEstadoConexion);
+
+        // Se ejecuta justo después de iniciar sesión (login, registro o sesión restaurada)
+        async function inicializarAppTrasLogin() {
+            // Mostrar/ocultar panel de administrador según el rol
+            const navAdmin = document.getElementById('nav-admin-sidebar');
+            if (usuarioActual.rol === 'admin') {
+                navAdmin.classList.remove('hidden');
+                navAdmin.classList.add('flex');
+            } else {
+                navAdmin.classList.add('hidden');
+            }
+
+            document.getElementById('sidebar-user-name').textContent = usuarioActual.nombre;
+            document.getElementById('sidebar-user-role').textContent = usuarioActual.rol === 'admin' ? 'Administrador' : 'Miembro';
+
+            establecerFechaPorDefecto();
+            actualizarEstadoConexion();
+            await actualizarPanelPrincipal(true); // Sincroniza BCV al iniciar sesión
+            await actualizarSelectClientes();
+            switchView('inicio');
+        }
+
+        // Evento de inicio del DOM: solo intenta restaurar sesión, el resto ocurre tras login
+        document.addEventListener('DOMContentLoaded', () => {
+            intentarRestaurarSesion();
+        });
+    </script>
+</body>
+</html>
