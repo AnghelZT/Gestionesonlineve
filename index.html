@@ -58,6 +58,27 @@
     <!-- Toast de Notificaciones Personalizado -->
     <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
+    <!-- Modal para Pago de Cuotas Individuales -->
+    <div id="modal-cuotas" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="w-full max-w-md bg-darkCard border border-darkBorder rounded-3xl p-6 shadow-2xl relative">
+            <button onclick="cerrarModalCuotas()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition">
+                <span class="material-icons-round">close</span>
+            </button>
+            <h3 class="text-base font-bold text-white mb-2 flex items-center gap-2">
+                <span class="material-icons-round text-purple-400">payments</span> Pagos de Cuotas (Cashea)
+            </h3>
+            <p class="text-xs text-slate-400 mb-4" id="modal-deuda-detalles"></p>
+            
+            <div class="space-y-3 max-h-60 overflow-y-auto mb-5 pr-1" id="modal-cuotas-lista">
+                <!-- Se llena dinámicamente -->
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <button onclick="cerrarModalCuotas()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl transition">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ================= PANTALLA DE AUTENTICACIÓN ================= -->
     <div id="auth-screen" class="min-h-screen flex items-center justify-center p-4">
         <div class="w-full max-w-sm bg-darkCard border border-darkBorder rounded-3xl p-6 shadow-xl">
@@ -113,10 +134,10 @@
         </div>
     </div>
 
-    <!-- ================= CONTENEDOR PRINCIPAL DE LA APP (oculto hasta iniciar sesión) ================= -->
+    <!-- ================= CONTENEDOR PRINCIPAL DE LA APP ================= -->
     <div id="app-shell" class="hidden min-h-screen flex flex-col md:flex-row pb-16 md:pb-0">
 
-    <!-- Barra lateral de navegación en escritorio / Header en móvil -->
+    <!-- Barra lateral de navegación -->
     <aside class="hidden md:flex flex-col w-64 bg-darkCard border-r border-darkBorder h-screen sticky top-0 p-5">
         <div class="flex items-center gap-3 mb-6">
             <span class="material-icons-round text-brandBlue text-3xl">account_balance_wallet</span>
@@ -212,7 +233,7 @@
                 </div>
             </div>
 
-            <!-- Resumen Rápido de hoy -->
+            <!-- Resumen Rápido -->
             <div class="grid grid-cols-2 gap-4">
                 <div class="bg-darkCard p-4 rounded-2xl border border-darkBorder flex items-center gap-3">
                     <div class="p-2 bg-brandGreen/10 rounded-xl text-brandGreen">
@@ -235,7 +256,7 @@
                 </div>
             </div>
 
-            <!-- Caja de Asistente Financiero Automatizado -->
+            <!-- Asistente Financiero -->
             <div class="bg-brandBlue/10 border border-brandBlue/30 rounded-3xl p-5 relative overflow-hidden">
                 <div class="flex items-center gap-3 mb-3">
                     <div class="w-8 h-8 rounded-full bg-brandBlue flex items-center justify-center">
@@ -244,19 +265,17 @@
                     <h3 class="font-bold text-sm text-brandBlue">Asistente de Estrategia Financiera</h3>
                 </div>
                 <div id="ai-suggestion" class="text-xs md:text-sm leading-relaxed text-slate-200">
-                    Cargando recomendaciones en tiempo real...
+                    Cargando recomendaciones...
                 </div>
             </div>
 
-            <!-- Últimos Movimientos Rápidos -->
+            <!-- Últimos Movimientos -->
             <div class="bg-darkCard rounded-2xl border border-darkBorder p-5">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="font-bold text-sm uppercase text-slate-400 tracking-wider">Movimientos Recientes</h3>
                     <button onclick="switchView('reportes')" class="text-xs text-brandBlue font-bold hover:underline">Ver Todo</button>
                 </div>
-                <div class="space-y-3" id="recent-transactions-list">
-                    <!-- Lista dinâmica de transacciones -->
-                </div>
+                <div class="space-y-3" id="recent-transactions-list"></div>
             </div>
         </section>
 
@@ -289,7 +308,6 @@
                         <label class="text-xs font-bold text-slate-400">Cliente Asociado</label>
                         <select id="ingreso-cliente" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm">
                             <option value="">Particular / Público general</option>
-                            <!-- Llenado dinámico -->
                         </select>
                     </div>
                     <div class="flex flex-col gap-1">
@@ -369,18 +387,18 @@
                 <form id="form-deuda" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="flex flex-col gap-1">
                         <label class="text-xs font-bold text-slate-400">Acreedor</label>
-                        <input type="text" id="deuda-acreedor" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" placeholder="Ej. Banco de Venezuela / Proveedor" required>
+                        <input type="text" id="deuda-acreedor" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" placeholder="Ej. Cashea / Proveedor" required>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div class="flex flex-col gap-1">
-                            <label class="text-xs font-bold text-slate-400">Monto Total</label>
-                            <input type="number" step="0.01" id="deuda-monto" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" placeholder="0.00" required>
+                            <label class="text-xs font-bold text-slate-400">Monto del Producto ($)</label>
+                            <input type="number" step="0.01" id="deuda-monto" oninput="autocalcularRestanteCashea()" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" placeholder="Ej. 25.00" required>
                         </div>
                         <div class="flex flex-col gap-1">
                             <label class="text-xs font-bold text-slate-400">Moneda</label>
                             <select id="deuda-moneda" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" required>
+                                <option value="USDT">USDT ($)</option>
                                 <option value="VES">VES</option>
-                                <option value="USDT">USDT</option>
                             </select>
                         </div>
                     </div>
@@ -393,20 +411,24 @@
                         <input type="number" step="0.1" id="deuda-interes" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" value="0">
                     </div>
 
-                    <!-- Pregunta Cashea -->
+                    <!-- Configuración Especial Cashea -->
                     <div class="md:col-span-2 bg-slate-900/60 border border-darkBorder rounded-xl p-4 space-y-3">
                         <label class="flex items-center gap-3 cursor-pointer select-none">
                             <input type="checkbox" id="deuda-es-cashea" class="w-4 h-4 accent-yellow-500" onchange="toggleCamposCashea()">
-                            <span class="text-sm font-bold text-slate-200">¿Es una deuda de Cashea (pago por cuotas)?</span>
+                            <span class="text-sm font-bold text-slate-200">¿Es una compra financiada (tipo Cashea)?</span>
                         </label>
-                        <div id="campos-cashea" class="hidden grid grid-cols-2 gap-3 pt-1">
+                        <div id="campos-cashea" class="hidden grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
                             <div class="flex flex-col gap-1">
-                                <label class="text-xs font-bold text-slate-400">Número total de cuotas</label>
-                                <input type="number" min="1" step="1" id="deuda-total-cuotas" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" placeholder="Ej. 4">
+                                <label class="text-xs font-bold text-slate-400">Pago Inicial / Pie</label>
+                                <input type="number" step="0.01" id="deuda-inicial" oninput="autocalcularRestanteCashea()" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" placeholder="Ej. 10.00">
                             </div>
                             <div class="flex flex-col gap-1">
-                                <label class="text-xs font-bold text-slate-400">Monto por cuota</label>
-                                <input type="number" step="0.01" id="deuda-monto-cuota" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" placeholder="0.00">
+                                <label class="text-xs font-bold text-slate-400">N° Cuotas Restantes</label>
+                                <input type="number" min="1" step="1" id="deuda-total-cuotas" oninput="autocalcularRestanteCashea()" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" placeholder="Ej. 3">
+                            </div>
+                            <div class="flex flex-col gap-1">
+                                <label class="text-xs font-bold text-slate-400">Monto por Cuota (Restante)</label>
+                                <input type="number" step="0.01" id="deuda-monto-cuota" class="bg-slate-950 border border-darkBorder p-3 rounded-xl text-slate-400 text-sm cursor-not-allowed" placeholder="0.00" readonly>
                             </div>
                         </div>
                     </div>
@@ -420,9 +442,7 @@
             <!-- Listado de Deudas -->
             <div class="bg-darkCard rounded-2xl border border-darkBorder p-5">
                 <h3 class="font-bold text-sm text-slate-400 uppercase tracking-wider mb-4">Deudas Registradas</h3>
-                <div class="space-y-3" id="debts-list">
-                    <!-- Lista dinámica -->
-                </div>
+                <div class="space-y-3" id="debts-list"></div>
             </div>
         </section>
 
@@ -444,9 +464,7 @@
 
             <div class="bg-darkCard rounded-2xl border border-darkBorder p-5">
                 <h3 class="font-bold text-sm text-slate-400 uppercase tracking-wider mb-4">Cartera de Clientes</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="clients-grid">
-                    <!-- Llenado dinámico -->
-                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="clients-grid"></div>
             </div>
         </section>
 
@@ -491,15 +509,13 @@
                                 <th class="pb-3 font-semibold text-right">Monto</th>
                             </tr>
                         </thead>
-                        <tbody id="history-table-body" class="divide-y divide-slate-800/50">
-                            <!-- Filas dinámicas -->
-                        </tbody>
+                        <tbody id="history-table-body" class="divide-y divide-slate-800/50"></tbody>
                     </table>
                 </div>
             </div>
         </section>
 
-        <!-- ================= VIEW: ADMINISTRACIÓN (solo admin) ================= -->
+        <!-- ================= VIEW: ADMINISTRACIÓN ================= -->
         <section id="view-admin" class="app-view hidden space-y-6">
             <h2 class="text-xl font-bold border-l-4 border-purple-500 pl-3">Panel de Administrador</h2>
 
@@ -520,20 +536,18 @@
 
             <div class="bg-darkCard rounded-2xl border border-darkBorder p-5">
                 <h3 class="font-bold text-sm text-slate-400 uppercase tracking-wider mb-4">Usuarios Registrados</h3>
-                <div class="space-y-3" id="admin-users-list">
-                    <!-- Llenado dinámico -->
-                </div>
+                <div class="space-y-3" id="admin-users-list"></div>
             </div>
 
             <div class="bg-darkCard border border-darkBorder p-5 rounded-2xl space-y-3">
                 <h3 class="font-bold text-sm text-slate-300 uppercase">Tasa de Cambio BCV (global)</h3>
-                <p class="text-[11px] text-slate-400">Esta tasa aplica para todos los usuarios de la plataforma. Se sincroniza automáticamente todos los días a partir de las 6:00pm y también al abrir la aplicación.</p>
+                <p class="text-[11px] text-slate-400">Esta tasa aplica para todos los usuarios de la plataforma. Se sincroniza automáticamente con el Banco Central de Venezuela.</p>
                 <button onclick="sincronizarTasaBCV().then(()=>{actualizarPanelPrincipal(false); renderizarAdmin();})" class="py-2 px-5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs transition">Forzar sincronización ahora</button>
             </div>
 
             <div class="bg-darkCard border border-darkBorder p-5 rounded-2xl space-y-4">
                 <h3 class="font-bold text-sm text-brandRed uppercase">Zona de Peligro (Global)</h3>
-                <p class="text-xs text-slate-400">Esto borrará TODA la base de datos: usuarios, ingresos, gastos, deudas y clientes de todas las cuentas. Úsalo con extrema precaución.</p>
+                <p class="text-xs text-slate-400">Esto borrará TODA la base de datos.</p>
                 <button onclick="factoryResetGlobal()" class="py-3 px-6 border border-brandRed text-brandRed bg-brandRed/5 hover:bg-brandRed/15 rounded-xl font-bold text-sm transition">Restablecer Aplicación Completa</button>
             </div>
         </section>
@@ -551,7 +565,8 @@
                     </div>
                     <button onclick="guardarTasaCambio()" class="py-3 px-6 bg-brandBlue text-white font-bold rounded-xl hover:opacity-90 transition text-sm">Actualizar</button>
                 </div>
-                <p class="text-[11px] text-slate-400">Esta tasa se utiliza para calcular el equivalente en USD unificado en el panel de inicio. Se actualiza automáticamente usando la cotización oficial del BCV al abrir la app y todos los días a partir de las <strong>6:00pm</strong> (mientras la app permanezca abierta o se vuelva a abrir después de esa hora).</p>
+                <p class="text-[11px] text-slate-400 font-bold text-brandGreen flex items-center gap-1" id="config-bcv-status"></p>
+                <p class="text-[11px] text-slate-400">Esta tasa se utiliza para calcular el equivalente unificado en USD. Se sincroniza con el BCV al iniciar sesión, forzar sync o automáticamente todos los días a las 6:00 PM.</p>
             </div>
 
             <div class="bg-darkCard border border-darkBorder p-5 rounded-2xl space-y-4">
@@ -562,7 +577,7 @@
 
             <div class="bg-darkCard border border-darkBorder p-5 rounded-2xl space-y-4">
                 <h3 class="font-bold text-sm text-brandRed uppercase">Zona de Peligro</h3>
-                <p class="text-xs text-slate-400">Al presionar el siguiente botón borrarás por completo TUS datos locales (ingresos, gastos, deudas y clientes). Tu cuenta de usuario permanecerá activa. Asegúrate de respaldar previamente con el botón de Descargar JSON en Reportes.</p>
+                <p class="text-xs text-slate-400">Al presionar el siguiente botón borrarás por completo TUS datos locales.</p>
                 <button onclick="factoryReset()" class="py-3 px-6 border border-brandRed text-brandRed bg-brandRed/5 hover:bg-brandRed/15 rounded-xl font-bold text-sm transition">Borrar Mis Datos</button>
             </div>
         </section>
@@ -597,13 +612,13 @@
         </button>
     </nav>
 
-    </div><!-- /#app-shell -->
+    </div>
 
     <!-- Código Javascript del Sistema -->
     <script>
         // ============ 1. Inicialización de Base de Datos Dexie (multiusuario) ============
         const db = new Dexie("GestionesOnlineFinanzasV2");
-        db.version(1).stores({
+        db.version(2).stores({
             usuarios: '++id, usuario, rol',
             ingresos: '++id, usuarioId, fecha, monto, moneda, concepto, cliente, metodoPago',
             gastos: '++id, usuarioId, fecha, categoria, monto, moneda, descripcion',
@@ -614,8 +629,6 @@
 
         // Tasa de cambio global por defecto
         let TASA_USDT_A_VES = 40.0;
-
-        // Usuario con sesión activa (objeto completo de la tabla usuarios)
         let usuarioActual = null;
 
         // ============ 2. Sistema de Notificaciones Toast ============
@@ -643,11 +656,7 @@
             `;
 
             container.appendChild(toast);
-
-            setTimeout(() => {
-                toast.classList.remove('translate-y-5', 'opacity-0');
-            }, 10);
-
+            setTimeout(() => toast.classList.remove('translate-y-5', 'opacity-0'), 10);
             setTimeout(() => {
                 toast.classList.add('translate-y-5', 'opacity-0');
                 setTimeout(() => toast.remove(), 300);
@@ -655,8 +664,6 @@
         }
 
         // ============ 3. AUTENTICACIÓN ============
-
-        // Hash simple con Web Crypto (SHA-256), funciona sin conexión a internet
         async function hashTexto(texto) {
             const enc = new TextEncoder().encode(texto);
             const hashBuffer = await crypto.subtle.digest('SHA-256', enc);
@@ -689,7 +696,6 @@
             el.classList.remove('hidden');
         }
 
-        // Crea el usuario administrador por defecto la primera vez que corre la app
         async function asegurarAdminPorDefecto() {
             const total = await db.usuarios.count();
             if (total === 0) {
@@ -772,7 +778,6 @@
             window.location.reload();
         }
 
-        // Intenta restaurar sesión previa guardada en localStorage
         async function intentarRestaurarSesion() {
             await asegurarAdminPorDefecto();
             const idGuardado = localStorage.getItem('sesion_usuario_id');
@@ -783,7 +788,6 @@
                     return;
                 }
             }
-            // No hay sesión: mostrar pantalla de autenticación
             document.getElementById('auth-screen').classList.remove('hidden');
         }
 
@@ -823,17 +827,17 @@
             }
         }
 
-        // ============ 5. Tasa BCV: sincronización + regla de "siempre a las 6pm" ============
+        // ============ 5. Sincronización Real con el BCV ============
         async function sincronizarTasaBCV() {
             try {
-                const res = await fetch("https://ve.dolarapi.com/v1/cotizaciones/oficiales");
+                // Endpoint directo de dólar oficial BCV más robusto de DolarApi
+                const res = await fetch("https://ve.dolarapi.com/v1/dolares/oficial");
                 if (!res.ok) throw new Error("Fallo de conexión.");
 
                 const datos = await res.json();
-                const dolarBCV = datos.find(m => m.moneda === "USD");
-
-                if (dolarBCV && dolarBCV.promedio) {
-                    const tasaOficial = parseFloat(dolarBCV.promedio);
+                
+                if (datos && datos.promedio) {
+                    const tasaOficial = parseFloat(datos.promedio);
                     await db.config.put({ clave: 'tasa_cambio', valor: tasaOficial });
                     await db.config.put({ clave: 'ultima_sync_bcv_fecha', valor: new Date().toISOString().split('T')[0] });
                     await db.config.put({ clave: 'ultima_sync_bcv_hora', valor: new Date().toLocaleTimeString('es-VE') });
@@ -842,17 +846,18 @@
                     const inputTasa = document.getElementById('config-tasa');
                     if (inputTasa) inputTasa.value = tasaOficial;
 
-                    showToast(`Tasa BCV actualizada: Bs. ${tasaOficial.toFixed(2)}`, 'info');
+                    const statusBCV = document.getElementById('config-bcv-status');
+                    if (statusBCV) statusBCV.innerHTML = `<span class="material-icons-round text-xs">sync</span> Sincronizado con BCV: Bs. ${tasaOficial.toFixed(2)}`;
+
+                    showToast(`Tasa BCV sincronizada: Bs. ${tasaOficial.toFixed(2)}`, 'info');
                     return tasaOficial;
                 }
             } catch (error) {
-                console.warn("No se pudo obtener la tasa en tiempo real (modo offline). Se usará la última tasa guardada.");
+                console.warn("Fallo al obtener tasa del BCV en vivo (Modo Offline). Se utilizará la tasa actual local.");
             }
             return null;
         }
 
-        // Revisa cada minuto si ya son las 6:00pm y aún no se ha sincronizado hoy después de esa hora.
-        // También se ejecuta al abrir la app: si se abre después de las 6pm y todavía no hubo sync de hoy, sincroniza de inmediato.
         async function verificarActualizacionAutomatica6PM() {
             const ahora = new Date();
             const hoyStr = ahora.toISOString().split('T')[0];
@@ -868,10 +873,9 @@
                 }
             }
         }
-        // Revisar cada 60 segundos mientras la app esté abierta
         setInterval(verificarActualizacionAutomatica6PM, 60000);
 
-        // ============ 6. Carga y Sincronización de Datos en Dashboard ============
+        // ============ 6. Carga y Sincronización de Datos ============
         async function actualizarPanelPrincipal(intentarSyncBCV = false) {
             const tasaCfg = await db.config.get('tasa_cambio');
             if (tasaCfg) {
@@ -882,7 +886,6 @@
             if (intentarSyncBCV) {
                 const nuevaTasa = await sincronizarTasaBCV();
                 if (nuevaTasa) TASA_USDT_A_VES = nuevaTasa;
-                // Además, evaluar de una vez la regla de las 6pm por si aplica
                 verificarActualizacionAutomatica6PM();
             }
 
@@ -934,39 +937,39 @@
             renderizarMovimientosRecientes(ingresos, gastos);
         }
 
-        // ============ 7. Motor de Sugerencias Inteligentes de Pago (Asistente) ============
+        // ============ 7. Asistente Financiero ============
         function procesarAsistenteInteligente(saldoEquivUSD, deudas) {
             const container = document.getElementById('ai-suggestion');
             const deudasPendientes = deudas.filter(d => d.estado === 'Pendiente');
 
             if (deudasPendientes.length === 0) {
-                container.innerHTML = `🌟 <strong>¡Fantástico!</strong> No posees deudas vigentes registradas. Tienes plena liquidez para enfocar tus ingresos del día en reinversión de servicios o campañas de marketing.`;
+                container.innerHTML = `🌟 <strong>¡Fantástico!</strong> No posees deudas vigentes registradas. Tienes plena liquidez para enfocar tus ingresos del día en reinversión o crecimiento.`;
                 return;
             }
 
             const deudasUrgentes = [...deudasPendientes].sort((a, b) => new Date(a.vencimiento) - new Date(b.vencimiento));
             const masUrgente = deudasUrgentes[0];
 
-            let deudaTotalUSD = 0;
+            let deudasTotalesUSD = 0;
             deudasPendientes.forEach(d => {
-                const m = parseFloat(d.montoPendiente ?? d.monto);
-                deudaTotalUSD += d.moneda === 'VES' ? (m / TASA_USDT_A_VES) : m;
+                const pendiente = d.montoPendiente ?? d.monto;
+                deudasTotalesUSD += d.moneda === 'VES' ? (pendiente / TASA_USDT_A_VES) : pendiente;
             });
 
-            let html = `Tienes un total equivalente de deudas pendientes por <strong>$${deudaTotalUSD.toFixed(2)} USD</strong>.<br><br>`;
+            let html = `Tienes un total de deudas vigentes por un equivalente de <strong>$${deudasTotalesUSD.toFixed(2)} USD</strong>.<br><br>`;
 
             if (saldoEquivUSD <= 0) {
-                html += `⚠️ Tienes saldo negativo o nulo en caja. Se recomienda posponer retiros personales y priorizar un abono, aunque sea pequeño, al compromiso con <strong>${masUrgente.acreedor}</strong> (Vence: ${masUrgente.vencimiento}).`;
+                html += `⚠️ Saldo en caja insuficiente. Recomendamos priorizar abonos o el pago de tu próxima cuota con <strong>${masUrgente.acreedor}</strong> (Vence: ${masUrgente.vencimiento}).`;
             } else {
                 const fondoEmergencia = saldoEquivUSD * 0.20;
                 const fondoPago = saldoEquivUSD * 0.50;
                 const fondoOperaciones = saldoEquivUSD * 0.30;
 
-                html += `💸 <strong>Planificación inteligente propuesta:</strong>
+                html += `💸 <strong>Planificación sugerida:</strong>
                 <ul class="list-disc pl-5 mt-2 space-y-1">
-                    <li>Reserva el 20% (<strong>$${fondoEmergencia.toFixed(2)}</strong>) para tu fondo de contingencia preventivo.</li>
-                    <li>Utiliza el 50% (<strong>$${fondoPago.toFixed(2)}</strong>) para abonar prioritariamente al acreedor <strong>${masUrgente.acreedor}</strong>, aunque sea un adelanto parcial.</li>
-                    <li>Mantén el 30% restante (<strong>$${fondoOperaciones.toFixed(2)}</strong>) disponible en caja chica para gastos operativos comunes.</li>
+                    <li>Fondo de reserva (20%): <strong>$${fondoEmergencia.toFixed(2)}</strong></li>
+                    <li>Pago de compromisos y cuotas (50%): <strong>$${fondoPago.toFixed(2)}</strong> para abonar a <strong>${masUrgente.acreedor}</strong></li>
+                    <li>Operaciones comunes (30%): <strong>$${fondoOperaciones.toFixed(2)}</strong></li>
                 </ul>`;
             }
 
@@ -1012,13 +1015,28 @@
             switchView('inicio');
         });
 
-        // ============ 10. Registro de Deudas (con soporte Cashea) ============
+        // ============ 10. Lógica Especial Cashea y Cuotas Automáticas ============
         function toggleCamposCashea() {
             const checked = document.getElementById('deuda-es-cashea').checked;
             const campos = document.getElementById('campos-cashea');
             campos.classList.toggle('hidden', !checked);
+            document.getElementById('deuda-inicial').required = checked;
             document.getElementById('deuda-total-cuotas').required = checked;
-            document.getElementById('deuda-monto-cuota').required = checked;
+            autocalcularRestanteCashea();
+        }
+
+        function autocalcularRestanteCashea() {
+            const esCashea = document.getElementById('deuda-es-cashea').checked;
+            if (!esCashea) return;
+
+            const montoTotal = parseFloat(document.getElementById('deuda-monto').value || 0);
+            const pagoInicial = parseFloat(document.getElementById('deuda-inicial').value || 0);
+            const numCuotas = parseInt(document.getElementById('deuda-total-cuotas').value || 0);
+
+            const restante = montoTotal - pagoInicial;
+            const montoPorCuota = numCuotas > 0 && restante > 0 ? (restante / numCuotas) : 0;
+
+            document.getElementById('deuda-monto-cuota').value = montoPorCuota.toFixed(2);
         }
 
         document.getElementById('form-deuda').addEventListener('submit', async (e) => {
@@ -1027,27 +1045,63 @@
             const montoBase = parseFloat(document.getElementById('deuda-monto').value);
             const interes = parseFloat(document.getElementById('deuda-interes').value || 0);
             const interesCalculado = montoBase * (interes / 100);
-            const montoConInteres = montoBase + (isNaN(interesCalculado) ? 0 : interesCalculado);
+            const montoConInteres = montoBase + interesCalculado;
 
-            const deu = {
+            let deu = {
                 usuarioId: usuarioActual.id,
                 acreedor: document.getElementById('deuda-acreedor').value,
                 monto: montoConInteres,
-                montoPendiente: montoConInteres,
                 moneda: document.getElementById('deuda-moneda').value,
                 vencimiento: document.getElementById('deuda-vencimiento').value,
                 interes: interes,
                 estado: 'Pendiente',
-                esCashea: esCashea,
-                totalCuotas: esCashea ? parseInt(document.getElementById('deuda-total-cuotas').value || 0) : null,
-                montoCuota: esCashea ? parseFloat(document.getElementById('deuda-monto-cuota').value || 0) : null,
-                cuotasPagadas: 0
+                esCashea: esCashea
             };
 
+            if (esCashea) {
+                const inicial = parseFloat(document.getElementById('deuda-inicial').value || 0);
+                const totalCuotas = parseInt(document.getElementById('deuda-total-cuotas').value || 0);
+                const valorCuota = parseFloat(document.getElementById('deuda-monto-cuota').value || 0);
+
+                // El inicial se descuenta de inmediato y el saldo restante son las cuotas
+                const restantePendiente = montoConInteres - inicial;
+
+                deu.inicial = inicial;
+                deu.montoPendiente = restantePendiente;
+                deu.totalCuotas = totalCuotas;
+                deu.montoCuota = valorCuota;
+                deu.cuotas = [];
+
+                // Generamos las cuotas individualizadas
+                for (let i = 1; i <= totalCuotas; i++) {
+                    deu.cuotas.push({
+                        numero: i,
+                        monto: valorCuota,
+                        estado: 'Pendiente',
+                        fechaPago: null
+                    });
+                }
+
+                // Guardamos el pago de la inicial como un egreso automático en Gastos
+                if (inicial > 0) {
+                    await db.gastos.add({
+                        usuarioId: usuarioActual.id,
+                        monto: inicial,
+                        moneda: deu.moneda,
+                        categoria: 'Otros',
+                        descripcion: `Pago Inicial (Cashea) - Compra en ${deu.acreedor}`,
+                        fecha: new Date().toISOString().split('T')[0]
+                    });
+                }
+            } else {
+                deu.montoPendiente = montoConInteres;
+            }
+
             await db.deudas.add(deu);
-            showToast(esCashea ? 'Deuda Cashea registrada con su plan de cuotas' : 'Deuda agregada correctamente');
+            showToast(esCashea ? 'Compra Cashea con plan de cuotas autocalculado creada.' : 'Deuda agregada correctamente');
             document.getElementById('form-deuda').reset();
             document.getElementById('campos-cashea').classList.add('hidden');
+            document.getElementById('deuda-es-cashea').checked = false;
             establecerFechaPorDefecto();
             renderizarDeudas();
         });
@@ -1072,76 +1126,165 @@
 
                 let badgeCashea = '';
                 if (d.esCashea) {
-                    badgeCashea = `<span class="text-[9px] bg-purple-500/20 text-purple-400 font-bold px-2 py-0.5 rounded ml-2">CASHEA · Cuota ${d.cuotasPagadas || 0}/${d.totalCuotas || '-'}</span>`;
+                    const cuotasPagas = d.cuotas ? d.cuotas.filter(c => c.estado === 'Pagada').length : 0;
+                    badgeCashea = `<span class="text-[9px] bg-purple-500/20 text-purple-400 font-bold px-2 py-0.5 rounded ml-2">CASHEA · Cuotas ${cuotasPagas}/${d.totalCuotas || '-'}</span>`;
                 }
 
                 div.innerHTML = `
                     <div class="flex justify-between items-center">
                         <div>
-                            <h4 class="font-bold text-sm ${esPendiente ? 'text-white' : 'text-slate-500 line-through'}">${d.acreedor}${badgeCashea}</h4>
-                            <span class="text-xs text-slate-400 block">Pendiente: ${pendiente.toFixed(2)} / ${d.monto.toFixed(2)} ${d.moneda} - Vence: ${d.vencimiento}</span>
+                            <h4 class="font-bold text-sm flex items-center ${esPendiente ? 'text-white' : 'text-slate-500 line-through'}">
+                                ${d.acreedor} ${badgeCashea}
+                            </h4>
+                            <span class="text-xs text-slate-400 block">Restante por pagar: ${pendiente.toFixed(2)} ${d.moneda} (Total original: ${d.monto.toFixed(2)})</span>
+                            <span class="text-[10px] text-slate-500 block">Vencimiento: ${d.vencimiento}</span>
                         </div>
                         <div class="flex gap-2">
                             ${esPendiente ?
-                                `<button onclick="abonarDeuda(${d.id})" class="px-3 py-1 bg-brandGreen/20 text-brandGreen hover:bg-brandGreen/30 text-xs font-bold rounded-lg transition">Abonar</button>` :
-                                `<span class="text-[10px] bg-slate-800 text-slate-400 font-bold px-2 py-1 rounded">Pagada</span>`
+                                `<button onclick="gestionarPagoDeuda(${d.id})" class="px-3 py-1 bg-brandGreen/20 text-brandGreen hover:bg-brandGreen/30 text-xs font-bold rounded-lg transition">Pagar / Abonar</button>` :
+                                `<span class="text-[10px] bg-slate-800 text-slate-400 font-bold px-2 py-1 rounded">Saldada</span>`
                             }
                         </div>
                     </div>
                     ${esPendiente ? `
-                    <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                        <div class="h-full bg-brandGreen" style="width:${pagadoPorc}%"></div>
+                    <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden mt-1">
+                        <div class="h-full bg-brandGreen animate-pulse" style="width:${pagadoPorc}%"></div>
                     </div>` : ''}
                 `;
                 container.appendChild(div);
             });
         }
 
-        // Abono parcial o pago total de una deuda, según lo que la persona tenga disponible
-        async function abonarDeuda(id) {
+        // Identifica si es deuda normal o de cuotas para abrir el flujo correcto
+        async function gestionarPagoDeuda(id) {
             const deuda = await db.deudas.get(id);
             if (!deuda || deuda.estado === 'Pagada') return;
 
+            if (deuda.esCashea) {
+                abrirModalCuotas(deuda);
+            } else {
+                // Abono para deudas estándares
+                const pendienteActual = deuda.montoPendiente ?? deuda.monto;
+                const entrada = prompt(`Abonar a deuda con ${deuda.acreedor}\nPendiente actual: ${pendienteActual.toFixed(2)} ${deuda.moneda}\n\nIngresa el monto a pagar:`, pendienteActual.toFixed(2));
+                if (entrada === null) return;
+
+                const monto = parseFloat(entrada);
+                if (isNaN(monto) || monto <= 0) {
+                    showToast('Monto ingresado no válido', 'error');
+                    return;
+                }
+
+                await registrarAbonoDeudaNormal(id, monto);
+            }
+        }
+
+        // Registro de abonos libres para deudas ordinarias
+        async function registrarAbonoDeudaNormal(id, monto) {
+            const deuda = await db.deudas.get(id);
             const pendienteActual = deuda.montoPendiente ?? deuda.monto;
-            const entrada = prompt(
-                `Deuda con ${deuda.acreedor}\nPendiente: ${pendienteActual.toFixed(2)} ${deuda.moneda}\n\n¿Cuánto deseas abonar ahora? (puede ser un adelanto parcial)`,
-                pendienteActual.toFixed(2)
-            );
-            if (entrada === null) return;
-
-            const monto = parseFloat(entrada);
-            if (isNaN(monto) || monto <= 0) {
-                showToast('Monto de abono no válido', 'error');
-                return;
-            }
-
-            const abono = Math.min(monto, pendienteActual);
-            const nuevoPendiente = pendienteActual - abono;
+            const abonoEfectivo = Math.min(monto, pendienteActual);
+            const nuevoPendiente = pendienteActual - abonoEfectivo;
             const nuevoEstado = nuevoPendiente <= 0.01 ? 'Pagada' : 'Pendiente';
-
-            let cuotasPagadas = deuda.cuotasPagadas || 0;
-            if (deuda.esCashea && deuda.montoCuota > 0) {
-                cuotasPagadas = Math.min(deuda.totalCuotas || 999, cuotasPagadas + Math.round(abono / deuda.montoCuota));
-            }
 
             await db.gastos.add({
                 usuarioId: usuarioActual.id,
-                monto: abono,
+                monto: abonoEfectivo,
                 moneda: deuda.moneda,
                 categoria: 'Servicios',
-                descripcion: `Abono a deuda${deuda.esCashea ? ' Cashea' : ''}: ${deuda.acreedor}`,
+                descripcion: `Abono a compromiso: ${deuda.acreedor}`,
                 fecha: new Date().toISOString().split('T')[0]
             });
 
             await db.deudas.update(id, {
                 montoPendiente: nuevoPendiente,
-                estado: nuevoEstado,
-                cuotasPagadas
+                estado: nuevoEstado
             });
 
-            showToast(nuevoEstado === 'Pagada' ? 'Deuda saldada por completo 🎉' : `Abono de ${abono.toFixed(2)} ${deuda.moneda} registrado`);
+            showToast(nuevoEstado === 'Pagada' ? 'Deuda saldada por completo 🎉' : `Abono registrado: ${abonoEfectivo.toFixed(2)} ${deuda.moneda}`);
             renderizarDeudas();
             actualizarPanelPrincipal(false);
+        }
+
+        // Modales y pagos específicos de Cuotas Cashea
+        let deudaEnEdicionModal = null;
+
+        function abrirModalCuotas(deuda) {
+            deudaEnEdicionModal = deuda;
+            document.getElementById('modal-deuda-detalles').innerHTML = `Deuda de <strong>${deuda.acreedor}</strong>. Cuotas de <strong>${deuda.montoCuota.toFixed(2)} ${deuda.moneda}</strong> cada una.`;
+            
+            const lista = document.getElementById('modal-cuotas-lista');
+            lista.innerHTML = '';
+
+            deuda.cuotas.forEach((cuota) => {
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center bg-slate-950 p-3 rounded-xl border border-slate-800";
+                
+                const esPaga = cuota.estado === 'Pagada';
+                div.innerHTML = `
+                    <span class="text-xs font-bold text-slate-300">Cuota #${cuota.numero} - ${cuota.monto.toFixed(2)} ${deuda.moneda}</span>
+                    <div>
+                        ${esPaga ? 
+                            `<span class="text-[10px] bg-brandGreen/20 text-brandGreen px-3 py-1 rounded-lg font-bold">PAGADA</span>` : 
+                            `<button onclick="pagarCuotaCasheaEspecifica(${cuota.numero})" class="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold rounded-lg transition">Pagar Cuota</button>`
+                        }
+                    </div>
+                `;
+                lista.appendChild(div);
+            });
+
+            document.getElementById('modal-cuotas').classList.remove('hidden');
+        }
+
+        function cerrarModalCuotas() {
+            document.getElementById('modal-cuotas').classList.add('hidden');
+            deudaEnEdicionModal = null;
+        }
+
+        async function pagarCuotaCasheaEspecifica(numCuota) {
+            if (!deudaEnEdicionModal) return;
+            const d = await db.deudas.get(deudaEnEdicionModal.id);
+            
+            const index = d.cuotas.findIndex(c => c.numero === numCuota);
+            if (index === -1 || d.cuotas[index].estado === 'Pagada') return;
+
+            // Actualizar cuota internamente
+            d.cuotas[index].estado = 'Pagada';
+            d.cuotas[index].fechaPago = new Date().toISOString().split('T')[0];
+
+            // Re-calcular restante de deuda
+            const restantePendiente = d.montoPendiente - d.montoCuota;
+            const todosPagas = d.cuotas.every(c => c.estado === 'Pagada');
+
+            // Crear el egreso/gasto asociado
+            await db.gastos.add({
+                usuarioId: usuarioActual.id,
+                monto: d.montoCuota,
+                moneda: d.moneda,
+                categoria: 'Servicios',
+                descripcion: `Pago de Cuota #${numCuota} (Cashea) - ${d.acreedor}`,
+                fecha: new Date().toISOString().split('T')[0]
+            });
+
+            // Guardar cambios en la base de datos
+            await db.deudas.update(d.id, {
+                cuotas: d.cuotas,
+                montoPendiente: Math.max(0, restantePendiente),
+                estado: todosPagas ? 'Pagada' : 'Pendiente'
+            });
+
+            showToast(`¡Cuota #${numCuota} de Cashea pagada con éxito!`);
+            
+            // Recargar datos activos en pantalla
+            const deudaActualizada = await db.deudas.get(d.id);
+            renderizarDeudas();
+            actualizarPanelPrincipal(false);
+
+            if (deudaActualizada.estado === 'Pagada') {
+                showToast(`¡Felicidades! Has terminado de pagar tu crédito con ${d.acreedor} 🎉`);
+                cerrarModalCuotas();
+            } else {
+                abrirModalCuotas(deudaActualizada); // Refrescar modal de cuotas
+            }
         }
 
         // ============ 11. Directorio de Clientes ============
@@ -1198,7 +1341,7 @@
             });
         }
 
-        // ============ 12. Movimientos recientes e historial ============
+        // ============ 12. Movimientos e Historial ============
         function renderizarMovimientosRecientes(ingresos, gastos) {
             const container = document.getElementById('recent-transactions-list');
             container.innerHTML = '';
@@ -1209,7 +1352,7 @@
             ].sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, 5);
 
             if (combinados.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-2">Registra tus primeros ingresos o egresos para ver el flujo.</p>`;
+                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-2">Registra tus primeros movimientos.</p>`;
                 return;
             }
 
@@ -1224,9 +1367,9 @@
                 div.innerHTML = `
                     <div>
                         <span class="font-bold text-slate-200">${item.concepto || item.descripcion}</span>
-                        <span class="text-[10px] text-slate-500 block">${item.fecha} - ${esIngreso ? 'Ingreso' : 'Egreso'}</span>
+                        <span class="text-[10px] text-slate-500 block">${item.fecha}</span>
                     </div>
-                    <span class="font-extrabold ${colorMonto}">${prefijo}${item.monto} ${item.moneda}</span>
+                    <span class="font-extrabold ${colorMonto}">${prefijo}${item.monto.toFixed(2)} ${item.moneda}</span>
                 `;
                 container.appendChild(div);
             });
@@ -1279,7 +1422,6 @@
             });
         }
 
-        // ============ 13. Limpieza de datos (por usuario) ============
         async function clearAllTransactions() {
             if (confirm("¿Estás seguro de que quieres vaciar todo tu historial de movimientos?")) {
                 await db.ingresos.where('usuarioId').equals(usuarioActual.id).delete();
@@ -1301,10 +1443,9 @@
             }
         }
 
-        // Reinicio TOTAL de la app (solo administrador) - borra usuarios, datos y configuración
         async function factoryResetGlobal() {
             if (usuarioActual.rol !== 'admin') return;
-            if (confirm("PELIGRO EXTREMO: ¿Restablecer TODA la aplicación? Se perderán todos los usuarios, ingresos, gastos, deudas y clientes de TODAS las cuentas.")) {
+            if (confirm("PELIGRO EXTREMO: ¿Restablecer TODA la aplicación?")) {
                 await db.delete();
                 localStorage.clear();
                 showToast("La aplicación ha sido restablecida por completo. Recargando...");
@@ -1312,7 +1453,6 @@
             }
         }
 
-        // ============ 14. Guardar Tasa de Cambio Manualmente ============
         async function guardarTasaCambio() {
             const tasaInput = parseFloat(document.getElementById('config-tasa').value);
             if (isNaN(tasaInput) || tasaInput <= 0) {
@@ -1321,19 +1461,18 @@
             }
             await db.config.put({ clave: 'tasa_cambio', valor: tasaInput });
             TASA_USDT_A_VES = tasaInput;
+            document.getElementById('config-bcv-status').innerHTML = `<span class="material-icons-round text-xs">edit</span> Tasa ajustada manualmente`;
             showToast('Tasa de cambio guardada');
             actualizarPanelPrincipal(false);
         }
 
-        // ============ 15. Exportación a JSON (datos del usuario actual) ============
         async function exportToJSON() {
             const exportData = {
                 usuario: usuarioActual.usuario,
                 ingresos: await db.ingresos.where('usuarioId').equals(usuarioActual.id).toArray(),
                 gastos: await db.gastos.where('usuarioId').equals(usuarioActual.id).toArray(),
                 deudas: await db.deudas.where('usuarioId').equals(usuarioActual.id).toArray(),
-                clientes: await db.clientes.where('usuarioId').equals(usuarioActual.id).toArray(),
-                config: await db.config.toArray()
+                clientes: await db.clientes.where('usuarioId').equals(usuarioActual.id).toArray()
             };
 
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
@@ -1346,7 +1485,7 @@
             showToast('JSON descargado exitosamente');
         }
 
-        // ============ 16. Panel de Administrador ============
+        // ============ 13. Panel de Administrador ============
         async function renderizarAdmin() {
             if (usuarioActual.rol !== 'admin') return;
 
@@ -1372,15 +1511,15 @@
                 div.innerHTML = `
                     <div>
                         <h4 class="font-bold text-sm text-white">${u.nombre} <span class="text-slate-500 font-normal">@${u.usuario}</span></h4>
-                        <span class="text-[10px] text-slate-400 block">${numIngresos} ingresos · ${numGastos} gastos · ${numDeudas} deudas activas · Desde ${u.fechaRegistro || '-'}</span>
+                        <span class="text-[10px] text-slate-400 block">${numIngresos} ingresos · ${numGastos} gastos · ${numDeudas} deudas activas</span>
                     </div>
                     <div class="flex items-center gap-2">
                         <span class="text-[10px] font-bold px-2 py-1 rounded ${u.rol === 'admin' ? 'bg-purple-500/20 text-purple-400' : 'bg-slate-800 text-slate-400'}">${u.rol === 'admin' ? 'ADMIN' : 'USUARIO'}</span>
                         ${u.id !== usuarioActual.id ? `
-                            <button onclick="cambiarRolUsuario(${u.id}, '${u.rol === 'admin' ? 'user' : 'admin'}')" title="Cambiar rol" class="text-slate-400 hover:text-brandBlue transition">
+                            <button onclick="cambiarRolUsuario(${u.id}, '${u.rol === 'admin' ? 'user' : 'admin'}')" class="text-slate-400 hover:text-brandBlue transition">
                                 <span class="material-icons-round text-base">swap_horiz</span>
                             </button>
-                            <button onclick="eliminarUsuario(${u.id})" title="Eliminar usuario" class="text-slate-400 hover:text-brandRed transition">
+                            <button onclick="eliminarUsuario(${u.id})" class="text-slate-400 hover:text-brandRed transition">
                                 <span class="material-icons-round text-base">delete</span>
                             </button>
                         ` : `<span class="text-[10px] text-slate-500 px-1">(Tú)</span>`}
@@ -1397,7 +1536,7 @@
         }
 
         async function eliminarUsuario(id) {
-            if (!confirm('¿Eliminar esta cuenta y todos sus datos (ingresos, gastos, deudas, clientes)? Esta acción no se puede deshacer.')) return;
+            if (!confirm('¿Eliminar esta cuenta y todos sus datos?')) return;
             await db.ingresos.where('usuarioId').equals(id).delete();
             await db.gastos.where('usuarioId').equals(id).delete();
             await db.deudas.where('usuarioId').equals(id).delete();
@@ -1407,7 +1546,7 @@
             renderizarAdmin();
         }
 
-        // ============ 17. Utilidades generales ============
+        // ============ 14. Utilidades generales ============
         function establecerFechaPorDefecto() {
             const hoy = new Date().toISOString().split('T')[0];
             document.getElementById('ingreso-fecha').value = hoy;
@@ -1431,9 +1570,7 @@
         window.addEventListener('online', actualizarEstadoConexion);
         window.addEventListener('offline', actualizarEstadoConexion);
 
-        // Se ejecuta justo después de iniciar sesión (login, registro o sesión restaurada)
         async function inicializarAppTrasLogin() {
-            // Mostrar/ocultar panel de administrador según el rol
             const navAdmin = document.getElementById('nav-admin-sidebar');
             if (usuarioActual.rol === 'admin') {
                 navAdmin.classList.remove('hidden');
@@ -1447,12 +1584,11 @@
 
             establecerFechaPorDefecto();
             actualizarEstadoConexion();
-            await actualizarPanelPrincipal(true); // Sincroniza BCV al iniciar sesión
+            await actualizarPanelPrincipal(true);
             await actualizarSelectClientes();
             switchView('inicio');
         }
 
-        // Evento de inicio del DOM: solo intenta restaurar sesión, el resto ocurre tras login
         document.addEventListener('DOMContentLoaded', () => {
             intentarRestaurarSesion();
         });
