@@ -53,7 +53,13 @@
         }
     </style>
 </head>
-<body class="bg-darkBg text-white font-sans min-h-screen">
+<body class="bg-darkBg text-white font-sans min-h-screen relative pb-16 md:pb-0">
+
+    <!-- Indicador de Tasa de Cambio Global (Fijo en la Esquina Superior Derecha en escritorio) -->
+    <div class="fixed top-4 right-4 z-50 hidden md:flex items-center gap-2 bg-slate-900/90 backdrop-blur border border-brandBlue/30 px-3 py-1.5 rounded-full shadow-lg">
+        <span class="material-icons-round text-brandBlue text-sm">monetization_on</span>
+        <span class="text-xs font-bold">BCV: <span id="global-rate-indicator-desktop">0.00</span> Bs.</span>
+    </div>
 
     <!-- Toast de Notificaciones Personalizado -->
     <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
@@ -65,15 +71,40 @@
                 <span class="material-icons-round">close</span>
             </button>
             <h3 class="text-base font-bold text-white mb-2 flex items-center gap-2">
-                <span class="material-icons-round text-purple-400">payments</span> Pagos de Cuotas (Cashea)
+                <span class="material-icons-round text-purple-400">payments</span> Control de Cuotas (Cashea)
             </h3>
             <p class="text-xs text-slate-400 mb-4" id="modal-deuda-detalles"></p>
             
-            <div class="space-y-3 max-h-60 overflow-y-auto mb-5 pr-1" id="modal-cuotas-lista">
+            <div class="space-y-3 max-h-64 overflow-y-auto mb-5 pr-1" id="modal-cuotas-lista">
                 <!-- Se llena dinámicamente -->
             </div>
 
-            <div class="flex justify-end gap-2">
+            <!-- Formulario/Sección para realizar abonos flexibles dentro del modal -->
+            <div id="seccion-abonar-cuota" class="hidden border-t border-darkBorder pt-4 mt-4 space-y-3">
+                <h4 class="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1">
+                    <span class="material-icons-round text-xs">edit_calendar</span> Realizar abono a Cuota <span id="txt-num-cuota-abono">#</span>
+                </h4>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-[10px] text-slate-400 font-semibold">Monto a abonar</label>
+                        <input type="number" step="0.01" id="abono-cuota-monto" oninput="calcularConversionAbono()" class="bg-darkBg border border-darkBorder p-2 rounded-xl text-xs outline-none focus:border-purple-500" placeholder="0.00">
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-[10px] text-slate-400 font-semibold">Moneda del abono</label>
+                        <select id="abono-cuota-moneda" onchange="calcularConversionAbono()" class="bg-darkBg border border-darkBorder p-2 rounded-xl text-xs outline-none focus:border-purple-500">
+                            <option value="USDT">USDT ($)</option>
+                            <option value="VES">Bolívares (Bs)</option>
+                        </select>
+                    </div>
+                </div>
+                <p class="text-[10px] text-slate-400" id="txt-abono-conversion"></p>
+                <div class="flex justify-end gap-2 pt-1">
+                    <button onclick="cancelarAbonoCuota()" class="px-3 py-1.5 bg-slate-800 text-slate-300 text-xs font-bold rounded-lg hover:bg-slate-700 transition">Cancelar</button>
+                    <button onclick="confirmarAbonoCuota()" class="px-3 py-1.5 bg-purple-600 text-white text-xs font-bold rounded-lg hover:bg-purple-700 transition">Aplicar Pago</button>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 mt-4">
                 <button onclick="cerrarModalCuotas()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl transition">Cerrar</button>
             </div>
         </div>
@@ -135,7 +166,7 @@
     </div>
 
     <!-- ================= CONTENEDOR PRINCIPAL DE LA APP ================= -->
-    <div id="app-shell" class="hidden min-h-screen flex flex-col md:flex-row pb-16 md:pb-0">
+    <div id="app-shell" class="hidden min-h-screen flex flex-col md:flex-row">
 
     <!-- Barra lateral de navegación -->
     <aside class="hidden md:flex flex-col w-64 bg-darkCard border-r border-darkBorder h-screen sticky top-0 p-5">
@@ -193,7 +224,10 @@
     <header class="md:hidden flex items-center justify-between bg-darkCard px-4 py-3 border-b border-darkBorder sticky top-0 z-40">
         <div class="flex items-center gap-2">
             <span class="material-icons-round text-brandBlue text-2xl">account_balance_wallet</span>
-            <span class="font-bold text-base">Gestiones Online</span>
+            <div class="flex flex-col">
+                <span class="font-bold text-xs leading-none">Gestiones Online</span>
+                <span class="text-[9px] text-brandBlue font-bold mt-0.5">BCV: <span id="global-rate-indicator-mobile">0.00</span> Bs.</span>
+            </div>
         </div>
         <div class="flex items-center gap-2">
             <div class="flex items-center gap-2 bg-slate-800 px-2 py-1 rounded-full text-xs" id="connection-status">
@@ -391,19 +425,19 @@
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div class="flex flex-col gap-1">
-                            <label class="text-xs font-bold text-slate-400">Monto del Producto ($)</label>
+                            <label class="text-xs font-bold text-slate-400">Monto del Producto ($ / Bs)</label>
                             <input type="number" step="0.01" id="deuda-monto" oninput="autocalcularRestanteCashea()" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" placeholder="Ej. 25.00" required>
                         </div>
                         <div class="flex flex-col gap-1">
                             <label class="text-xs font-bold text-slate-400">Moneda</label>
-                            <select id="deuda-moneda" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" required>
+                            <select id="deuda-moneda" onchange="autocalcularRestanteCashea()" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" required>
                                 <option value="USDT">USDT ($)</option>
-                                <option value="VES">VES</option>
+                                <option value="VES">VES (Bs)</option>
                             </select>
                         </div>
                     </div>
                     <div class="flex flex-col gap-1">
-                        <label class="text-xs font-bold text-slate-400">Fecha de Vencimiento</label>
+                        <label class="text-xs font-bold text-slate-400" id="lbl-deuda-fecha">Fecha de Compra</label>
                         <input type="date" id="deuda-vencimiento" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" required>
                     </div>
                     <div class="flex flex-col gap-1">
@@ -631,6 +665,10 @@
         let TASA_USDT_A_VES = 40.0;
         let usuarioActual = null;
 
+        // Variables auxiliares para el abono de cuotas de Cashea
+        let deudaEnEdicionModal = null;
+        let cuotaSeleccionadaParaAbonar = null;
+
         // ============ 2. Sistema de Notificaciones Toast ============
         function showToast(message, type = 'success') {
             const container = document.getElementById('toast-container');
@@ -830,7 +868,6 @@
         // ============ 5. Sincronización Real con el BCV ============
         async function sincronizarTasaBCV() {
             try {
-                // Endpoint directo de dólar oficial BCV más robusto de DolarApi
                 const res = await fetch("https://ve.dolarapi.com/v1/dolares/oficial");
                 if (!res.ok) throw new Error("Fallo de conexión.");
 
@@ -843,6 +880,10 @@
                     await db.config.put({ clave: 'ultima_sync_bcv_hora', valor: new Date().toLocaleTimeString('es-VE') });
                     TASA_USDT_A_VES = tasaOficial;
 
+                    // Actualizar indicadores visuales globales permanentes
+                    document.getElementById('global-rate-indicator-desktop').textContent = tasaOficial.toFixed(2);
+                    document.getElementById('global-rate-indicator-mobile').textContent = tasaOficial.toFixed(2);
+
                     const inputTasa = document.getElementById('config-tasa');
                     if (inputTasa) inputTasa.value = tasaOficial;
 
@@ -853,7 +894,7 @@
                     return tasaOficial;
                 }
             } catch (error) {
-                console.warn("Fallo al obtener tasa del BCV en vivo (Modo Offline). Se utilizará la tasa actual local.");
+                console.warn("Fallo al obtener tasa del BCV en vivo (Modo Offline).");
             }
             return null;
         }
@@ -881,6 +922,8 @@
             if (tasaCfg) {
                 TASA_USDT_A_VES = parseFloat(tasaCfg.valor);
                 document.getElementById('config-tasa').value = TASA_USDT_A_VES;
+                document.getElementById('global-rate-indicator-desktop').textContent = TASA_USDT_A_VES.toFixed(2);
+                document.getElementById('global-rate-indicator-mobile').textContent = TASA_USDT_A_VES.toFixed(2);
             }
 
             if (intentarSyncBCV) {
@@ -1019,9 +1062,15 @@
         function toggleCamposCashea() {
             const checked = document.getElementById('deuda-es-cashea').checked;
             const campos = document.getElementById('campos-cashea');
+            const lblFecha = document.getElementById('lbl-deuda-fecha');
+
             campos.classList.toggle('hidden', !checked);
             document.getElementById('deuda-inicial').required = checked;
             document.getElementById('deuda-total-cuotas').required = checked;
+
+            // Cambiar dinámicamente la etiqueta según sea Cashea o Deuda normal
+            lblFecha.textContent = checked ? "Fecha de Compra" : "Fecha de Vencimiento";
+
             autocalcularRestanteCashea();
         }
 
@@ -1039,6 +1088,13 @@
             document.getElementById('deuda-monto-cuota').value = montoPorCuota.toFixed(2);
         }
 
+        // Función para sumar días a una fecha (Formato YYYY-MM-DD)
+        function sumarDias(fechaStr, dias) {
+            const date = new Date(fechaStr + 'T00:00:00');
+            date.setDate(date.getDate() + dias);
+            return date.toISOString().split('T')[0];
+        }
+
         document.getElementById('form-deuda').addEventListener('submit', async (e) => {
             e.preventDefault();
             const esCashea = document.getElementById('deuda-es-cashea').checked;
@@ -1046,13 +1102,14 @@
             const interes = parseFloat(document.getElementById('deuda-interes').value || 0);
             const interesCalculado = montoBase * (interes / 100);
             const montoConInteres = montoBase + interesCalculado;
+            const fechaIngresada = document.getElementById('deuda-vencimiento').value;
 
             let deu = {
                 usuarioId: usuarioActual.id,
                 acreedor: document.getElementById('deuda-acreedor').value,
                 monto: montoConInteres,
                 moneda: document.getElementById('deuda-moneda').value,
-                vencimiento: document.getElementById('deuda-vencimiento').value,
+                vencimiento: fechaIngresada, // Para Cashea representa la fecha de compra original
                 interes: interes,
                 estado: 'Pendiente',
                 esCashea: esCashea
@@ -1063,7 +1120,6 @@
                 const totalCuotas = parseInt(document.getElementById('deuda-total-cuotas').value || 0);
                 const valorCuota = parseFloat(document.getElementById('deuda-monto-cuota').value || 0);
 
-                // El inicial se descuenta de inmediato y el saldo restante son las cuotas
                 const restantePendiente = montoConInteres - inicial;
 
                 deu.inicial = inicial;
@@ -1072,17 +1128,27 @@
                 deu.montoCuota = valorCuota;
                 deu.cuotas = [];
 
-                // Generamos las cuotas individualizadas
+                // Generación de cuotas automáticas espaciadas secuencialmente de 14 en 14 días
                 for (let i = 1; i <= totalCuotas; i++) {
+                    const diasASumar = i * 14;
+                    const fechaVencimientoCuota = sumarDias(fechaIngresada, diasASumar);
+
                     deu.cuotas.push({
                         numero: i,
                         monto: valorCuota,
+                        montoPendiente: valorCuota, // Permitimos control de abonos parciales por cuota
                         estado: 'Pendiente',
+                        vencimiento: fechaVencimientoCuota,
                         fechaPago: null
                     });
                 }
 
-                // Guardamos el pago de la inicial como un egreso automático en Gastos
+                // Ajustamos el vencimiento final de la deuda general como la fecha de la última cuota
+                if (totalCuotas > 0) {
+                    deu.vencimiento = deu.cuotas[totalCuotas - 1].vencimiento;
+                }
+
+                // Registrar egreso automático por pago inicial en Gastos
                 if (inicial > 0) {
                     await db.gastos.add({
                         usuarioId: usuarioActual.id,
@@ -1098,10 +1164,11 @@
             }
 
             await db.deudas.add(deu);
-            showToast(esCashea ? 'Compra Cashea con plan de cuotas autocalculado creada.' : 'Deuda agregada correctamente');
+            showToast(esCashea ? 'Compra Cashea con plan de cuotas quincenales (14 días) creado.' : 'Deuda agregada correctamente');
             document.getElementById('form-deuda').reset();
             document.getElementById('campos-cashea').classList.add('hidden');
             document.getElementById('deuda-es-cashea').checked = false;
+            document.getElementById('lbl-deuda-fecha').textContent = "Fecha de Vencimiento";
             establecerFechaPorDefecto();
             renderizarDeudas();
         });
@@ -1125,9 +1192,17 @@
                 const pagadoPorc = d.monto > 0 ? Math.min(100, Math.round(((d.monto - pendiente) / d.monto) * 100)) : 100;
 
                 let badgeCashea = '';
+                let detallesVencimiento = `Vencimiento: ${d.vencimiento}`;
+
                 if (d.esCashea) {
                     const cuotasPagas = d.cuotas ? d.cuotas.filter(c => c.estado === 'Pagada').length : 0;
                     badgeCashea = `<span class="text-[9px] bg-purple-500/20 text-purple-400 font-bold px-2 py-0.5 rounded ml-2">CASHEA · Cuotas ${cuotasPagas}/${d.totalCuotas || '-'}</span>`;
+                    
+                    // Encontrar la próxima cuota pendiente para mostrar su vencimiento prioritario
+                    const proximaCuota = d.cuotas.find(c => c.estado === 'Pendiente');
+                    if (proximaCuota) {
+                        detallesVencimiento = `Próxima Cuota (#${proximaCuota.numero}) vence: ${proximaCuota.vencimiento}`;
+                    }
                 }
 
                 div.innerHTML = `
@@ -1137,7 +1212,7 @@
                                 ${d.acreedor} ${badgeCashea}
                             </h4>
                             <span class="text-xs text-slate-400 block">Restante por pagar: ${pendiente.toFixed(2)} ${d.moneda} (Total original: ${d.monto.toFixed(2)})</span>
-                            <span class="text-[10px] text-slate-500 block">Vencimiento: ${d.vencimiento}</span>
+                            <span class="text-[10px] text-slate-500 block">${detallesVencimiento}</span>
                         </div>
                         <div class="flex gap-2">
                             ${esPendiente ?
@@ -1148,14 +1223,13 @@
                     </div>
                     ${esPendiente ? `
                     <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden mt-1">
-                        <div class="h-full bg-brandGreen animate-pulse" style="width:${pagadoPorc}%"></div>
+                        <div class="h-full bg-brandGreen" style="width:${pagadoPorc}%"></div>
                     </div>` : ''}
                 `;
                 container.appendChild(div);
             });
         }
 
-        // Identifica si es deuda normal o de cuotas para abrir el flujo correcto
         async function gestionarPagoDeuda(id) {
             const deuda = await db.deudas.get(id);
             if (!deuda || deuda.estado === 'Pagada') return;
@@ -1163,7 +1237,6 @@
             if (deuda.esCashea) {
                 abrirModalCuotas(deuda);
             } else {
-                // Abono para deudas estándares
                 const pendienteActual = deuda.montoPendiente ?? deuda.monto;
                 const entrada = prompt(`Abonar a deuda con ${deuda.acreedor}\nPendiente actual: ${pendienteActual.toFixed(2)} ${deuda.moneda}\n\nIngresa el monto a pagar:`, pendienteActual.toFixed(2));
                 if (entrada === null) return;
@@ -1178,7 +1251,6 @@
             }
         }
 
-        // Registro de abonos libres para deudas ordinarias
         async function registrarAbonoDeudaNormal(id, monto) {
             const deuda = await db.deudas.get(id);
             const pendienteActual = deuda.montoPendiente ?? deuda.monto;
@@ -1205,28 +1277,35 @@
             actualizarPanelPrincipal(false);
         }
 
-        // Modales y pagos específicos de Cuotas Cashea
-        let deudaEnEdicionModal = null;
-
+        // ============ 11. Modal y Lógica de Abonos de Cuotas Cashea ============
         function abrirModalCuotas(deuda) {
             deudaEnEdicionModal = deuda;
             document.getElementById('modal-deuda-detalles').innerHTML = `Deuda de <strong>${deuda.acreedor}</strong>. Cuotas de <strong>${deuda.montoCuota.toFixed(2)} ${deuda.moneda}</strong> cada una.`;
             
+            cancelarAbonoCuota(); // Resetear formulario de abono interno
             const lista = document.getElementById('modal-cuotas-lista');
             lista.innerHTML = '';
 
             deuda.cuotas.forEach((cuota) => {
                 const div = document.createElement('div');
-                div.className = "flex justify-between items-center bg-slate-950 p-3 rounded-xl border border-slate-800";
+                div.className = "flex flex-col gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800";
                 
                 const esPaga = cuota.estado === 'Pagada';
+                // Compatibilidad: si la cuota no tiene la propiedad montoPendiente inicializada, se la asignamos
+                const pendienteCuota = cuota.montoPendiente !== undefined ? cuota.montoPendiente : (esPaga ? 0 : cuota.monto);
+
                 div.innerHTML = `
-                    <span class="text-xs font-bold text-slate-300">Cuota #${cuota.numero} - ${cuota.monto.toFixed(2)} ${deuda.moneda}</span>
-                    <div>
-                        ${esPaga ? 
-                            `<span class="text-[10px] bg-brandGreen/20 text-brandGreen px-3 py-1 rounded-lg font-bold">PAGADA</span>` : 
-                            `<button onclick="pagarCuotaCasheaEspecifica(${cuota.numero})" class="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold rounded-lg transition">Pagar Cuota</button>`
-                        }
+                    <div class="flex justify-between items-center">
+                        <div class="flex flex-col">
+                            <span class="text-xs font-bold text-slate-200">Cuota #${cuota.numero} (Vence: ${cuota.vencimiento})</span>
+                            <span class="text-[11px] text-slate-400">Restante: ${pendienteCuota.toFixed(2)} / ${cuota.monto.toFixed(2)} ${deuda.moneda}</span>
+                        </div>
+                        <div>
+                            ${esPaga ? 
+                                `<span class="text-[10px] bg-brandGreen/20 text-brandGreen px-3 py-1 rounded-lg font-bold">PAGADA</span>` : 
+                                `<button onclick="iniciarAbonoCuota(${cuota.numero}, ${pendienteCuota})" class="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold rounded-lg transition">Abonar</button>`
+                            }
+                        </div>
                     </div>
                 `;
                 lista.appendChild(div);
@@ -1238,56 +1317,135 @@
         function cerrarModalCuotas() {
             document.getElementById('modal-cuotas').classList.add('hidden');
             deudaEnEdicionModal = null;
+            cuotaSeleccionadaParaAbonar = null;
         }
 
-        async function pagarCuotaCasheaEspecifica(numCuota) {
-            if (!deudaEnEdicionModal) return;
-            const d = await db.deudas.get(deudaEnEdicionModal.id);
+        // Mostrar formulario para introducir abonos
+        function iniciarAbonoCuota(numCuota, montoPendiente) {
+            cuotaSeleccionadaParaAbonar = {
+                numero: numCuota,
+                montoMaximoUSD: deudaEnEdicionModal.moneda === 'USDT' ? montoPendiente : (montoPendiente / TASA_USDT_A_VES),
+                montoMaximoVES: deudaEnEdicionModal.moneda === 'VES' ? montoPendiente : (montoPendiente * TASA_USDT_A_VES),
+                montoOriginalPendiente: montoPendiente
+            };
+
+            document.getElementById('txt-num-cuota-abono').textContent = `#${numCuota}`;
+            const inputMonto = document.getElementById('abono-cuota-monto');
+            inputMonto.value = montoPendiente.toFixed(2); // Cargar el monto sugerido completo
             
-            const index = d.cuotas.findIndex(c => c.numero === numCuota);
-            if (index === -1 || d.cuotas[index].estado === 'Pagada') return;
+            // Forzar que la moneda del selector sea por defecto la de la deuda
+            document.getElementById('abono-cuota-moneda').value = deudaEnEdicionModal.moneda;
 
-            // Actualizar cuota internamente
-            d.cuotas[index].estado = 'Pagada';
-            d.cuotas[index].fechaPago = new Date().toISOString().split('T')[0];
+            document.getElementById('seccion-abonar-cuota').classList.remove('hidden');
+            calcularConversionAbono();
+        }
 
-            // Re-calcular restante de deuda
-            const restantePendiente = d.montoPendiente - d.montoCuota;
-            const todosPagas = d.cuotas.every(c => c.estado === 'Pagada');
+        function cancelarAbonoCuota() {
+            document.getElementById('seccion-abonar-cuota').classList.add('hidden');
+            document.getElementById('abono-cuota-monto').value = '';
+            document.getElementById('txt-abono-conversion').textContent = '';
+            cuotaSeleccionadaParaAbonar = null;
+        }
 
-            // Crear el egreso/gasto asociado
+        // Calcula dinámicamente y muestra la conversión de divisas en tiempo real para el abono
+        function calcularConversionAbono() {
+            if (!cuotaSeleccionadaParaAbonar || !deudaEnEdicionModal) return;
+
+            const montoIngresado = parseFloat(document.getElementById('abono-cuota-monto').value || 0);
+            const monedaSeleccionada = document.getElementById('abono-cuota-moneda').value;
+            const txtConversion = document.getElementById('txt-abono-conversion');
+
+            if (montoIngresado <= 0) {
+                txtConversion.textContent = '';
+                return;
+            }
+
+            let equivalente = 0;
+            if (monedaSeleccionada === 'USDT') {
+                equivalente = montoIngresado * TASA_USDT_A_VES;
+                txtConversion.textContent = `Equivale a: Bs. ${equivalente.toFixed(2)} (Tasa: ${TASA_USDT_A_VES.toFixed(2)})`;
+            } else {
+                equivalente = montoIngresado / TASA_USDT_A_VES;
+                txtConversion.textContent = `Equivale a: $${equivalente.toFixed(2)} USD (Tasa: ${TASA_USDT_A_VES.toFixed(2)})`;
+            }
+        }
+
+        async function confirmarAbonoCuota() {
+            if (!deudaEnEdicionModal || !cuotaSeleccionadaParaAbonar) return;
+
+            const inputMonto = parseFloat(document.getElementById('abono-cuota-monto').value || 0);
+            const monedaAbono = document.getElementById('abono-cuota-moneda').value;
+
+            if (isNaN(inputMonto) || inputMonto <= 0) {
+                showToast('Monto de abono no válido', 'error');
+                return;
+            }
+
+            // Normalizamos el abono a la moneda de la deuda
+            let abonoEnMonedaDeuda = inputMonto;
+            if (monedaAbono !== deudaEnEdicionModal.moneda) {
+                if (monedaAbono === 'VES') {
+                    // Abono de VES a deuda en USDT
+                    abonoEnMonedaDeuda = inputMonto / TASA_USDT_A_VES;
+                } else {
+                    // Abono de USDT a deuda en VES
+                    abonoEnMonedaDeuda = inputMonto * TASA_USDT_A_VES;
+                }
+            }
+
+            const d = await db.deudas.get(deudaEnEdicionModal.id);
+            const index = d.cuotas.findIndex(c => c.numero === cuotaSeleccionadaParaAbonar.numero);
+            if (index === -1) return;
+
+            const pendienteActualCuota = d.cuotas[index].montoPendiente !== undefined ? d.cuotas[index].montoPendiente : (d.cuotas[index].estado === 'Pagada' ? 0 : d.cuotas[index].monto);
+            
+            // Evitar abonar de más en la cuota
+            const abonoEfectivo = Math.min(abonoEnMonedaDeuda, pendienteActualCuota);
+            const nuevoPendienteCuota = pendienteActualCuota - abonoEfectivo;
+
+            // Actualizar datos de la cuota seleccionada
+            d.cuotas[index].montoPendiente = nuevoPendienteCuota;
+            if (nuevoPendienteCuota <= 0.01) {
+                d.cuotas[index].estado = 'Pagada';
+                d.cuotas[index].fechaPago = new Date().toISOString().split('T')[0];
+            }
+
+            // Actualizar saldo general de la deuda total
+            const nuevoMontoPendienteDeuda = Math.max(0, d.montoPendiente - abonoEfectivo);
+            const todasPagadas = d.cuotas.every(c => (c.montoPendiente !== undefined ? c.montoPendiente : (c.estado === 'Pagada' ? 0 : c.monto)) <= 0.01);
+
+            // Registrar la transacción de salida real en el libro de Gastos
             await db.gastos.add({
                 usuarioId: usuarioActual.id,
-                monto: d.montoCuota,
-                moneda: d.moneda,
+                monto: inputMonto, // Registramos la cantidad en la moneda real que pagó el usuario
+                moneda: monedaAbono,
                 categoria: 'Servicios',
-                descripcion: `Pago de Cuota #${numCuota} (Cashea) - ${d.acreedor}`,
+                descripcion: `Abono a Cuota #${cuotaSeleccionadaParaAbonar.numero} (Cashea) - ${d.acreedor}`,
                 fecha: new Date().toISOString().split('T')[0]
             });
 
-            // Guardar cambios en la base de datos
+            // Guardar cambios actualizados de la deuda en la base de datos local
             await db.deudas.update(d.id, {
                 cuotas: d.cuotas,
-                montoPendiente: Math.max(0, restantePendiente),
-                estado: todosPagas ? 'Pagada' : 'Pendiente'
+                montoPendiente: nuevoMontoPendienteDeuda,
+                estado: todasPagadas ? 'Pagada' : 'Pendiente'
             });
 
-            showToast(`¡Cuota #${numCuota} de Cashea pagada con éxito!`);
+            showToast(`¡Abono de ${inputMonto.toFixed(2)} ${monedaAbono} aplicado con éxito!`);
             
-            // Recargar datos activos en pantalla
             const deudaActualizada = await db.deudas.get(d.id);
             renderizarDeudas();
             actualizarPanelPrincipal(false);
 
             if (deudaActualizada.estado === 'Pagada') {
-                showToast(`¡Felicidades! Has terminado de pagar tu crédito con ${d.acreedor} 🎉`);
+                showToast(`¡Felicidades! Has terminado de saldar toda la compra en ${d.acreedor} 🎉`);
                 cerrarModalCuotas();
             } else {
-                abrirModalCuotas(deudaActualizada); // Refrescar modal de cuotas
+                abrirModalCuotas(deudaActualizada); // Actualizar modal
             }
         }
 
-        // ============ 11. Directorio de Clientes ============
+        // ============ 12. Directorio de Clientes ============
         document.getElementById('form-cliente').addEventListener('submit', async (e) => {
             e.preventDefault();
             const cli = {
@@ -1341,7 +1499,7 @@
             });
         }
 
-        // ============ 12. Movimientos e Historial ============
+        // ============ 13. Movimientos e Historial ============
         function renderizarMovimientosRecientes(ingresos, gastos) {
             const container = document.getElementById('recent-transactions-list');
             container.innerHTML = '';
@@ -1461,6 +1619,8 @@
             }
             await db.config.put({ clave: 'tasa_cambio', valor: tasaInput });
             TASA_USDT_A_VES = tasaInput;
+            document.getElementById('global-rate-indicator-desktop').textContent = tasaInput.toFixed(2);
+            document.getElementById('global-rate-indicator-mobile').textContent = tasaInput.toFixed(2);
             document.getElementById('config-bcv-status').innerHTML = `<span class="material-icons-round text-xs">edit</span> Tasa ajustada manualmente`;
             showToast('Tasa de cambio guardada');
             actualizarPanelPrincipal(false);
@@ -1485,7 +1645,7 @@
             showToast('JSON descargado exitosamente');
         }
 
-        // ============ 13. Panel de Administrador ============
+        // ============ 14. Panel de Administrador ============
         async function renderizarAdmin() {
             if (usuarioActual.rol !== 'admin') return;
 
@@ -1546,7 +1706,7 @@
             renderizarAdmin();
         }
 
-        // ============ 14. Utilidades generales ============
+        // ============ 15. Utilidades generales ============
         function establecerFechaPorDefecto() {
             const hoy = new Date().toISOString().split('T')[0];
             document.getElementById('ingreso-fecha').value = hoy;
