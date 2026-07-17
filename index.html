@@ -3,1755 +3,1137 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestiones Online - Finanzas Pro</title>
-
-    <!-- Tailwind CSS CDN -->
+    <title>Finanzas App - Control de Cuotas y Caja</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        darkBg: '#0b0f17',
-                        darkCard: '#131924',
-                        darkBorder: '#1e293b',
-                        brandBlue: '#2563eb',
-                        brandGreen: '#10b981',
-                        brandRed: '#f43f5e'
-                    }
-                }
-            }
-        }
-    </script>
-
-    <!-- Google Material Icons Round -->
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
-
-    <!-- Dexie.js para base de datos local robusta -->
+    <!-- Dexie.js para IndexedDB -->
     <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
-
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        /* Ocultar barra de desplazamiento por defecto para una interfaz nativa */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #0b0f17; }
-        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #2563eb; }
-        .active-tab {
-            color: #2563eb !important;
-            border-top: 2px solid #2563eb;
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
         }
-        @media (min-width: 768px) {
-            .active-tab {
-                border-top: none;
-                border-left: 4px solid #2563eb;
-                background-color: rgba(37, 99, 235, 0.08);
-            }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
         }
-        .auth-tab-active {
-            color: #fff !important;
-            border-bottom: 2px solid #2563eb;
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
     </style>
 </head>
-<body class="bg-darkBg text-white font-sans min-h-screen relative pb-16 md:pb-0">
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col pb-12">
 
-    <!-- Indicador de Tasa de Cambio Global (Fijo en la Esquina Superior Derecha en escritorio) -->
-    <div class="fixed top-4 right-4 z-50 hidden md:flex items-center gap-2 bg-slate-900/90 backdrop-blur border border-brandBlue/30 px-3 py-1.5 rounded-full shadow-lg">
-        <span class="material-icons-round text-brandBlue text-sm">monetization_on</span>
-        <span class="text-xs font-bold">BCV: <span id="global-rate-indicator-desktop">0.00</span> Bs.</span>
-    </div>
-
-    <!-- Toast de Notificaciones Personalizado -->
-    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
-
-    <!-- Modal para Pago de Cuotas Individuales -->
-    <div id="modal-cuotas" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="w-full max-w-md bg-darkCard border border-darkBorder rounded-3xl p-6 shadow-2xl relative">
-            <button onclick="cerrarModalCuotas()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition">
-                <span class="material-icons-round">close</span>
-            </button>
-            <h3 class="text-base font-bold text-white mb-2 flex items-center gap-2">
-                <span class="material-icons-round text-purple-400">payments</span> Control de Cuotas (Cashea)
-            </h3>
-            <p class="text-xs text-slate-400 mb-4" id="modal-deuda-detalles"></p>
+    <!-- BARRA DE NAVEGACIÓN SUPERIOR -->
+    <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-40 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-600 p-2 rounded-lg text-white">
+                    <i data-lucide="wallet"></i>
+                </div>
+                <span class="font-bold text-xl tracking-tight bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">InterFinanzas</span>
+            </div>
             
-            <div class="space-y-3 max-h-64 overflow-y-auto mb-5 pr-1" id="modal-cuotas-lista">
-                <!-- Se llena dinámicamente -->
-            </div>
-
-            <!-- Formulario/Sección para realizar abonos flexibles dentro del modal -->
-            <div id="seccion-abonar-cuota" class="hidden border-t border-darkBorder pt-4 mt-4 space-y-3">
-                <h4 class="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1">
-                    <span class="material-icons-round text-xs">edit_calendar</span> Realizar abono a Cuota <span id="txt-num-cuota-abono">#</span>
-                </h4>
-                <div class="grid grid-cols-2 gap-2">
-                    <div class="flex flex-col gap-1">
-                        <label class="text-[10px] text-slate-400 font-semibold">Monto a abonar</label>
-                        <input type="number" step="0.01" id="abono-cuota-monto" oninput="calcularConversionAbono()" class="bg-darkBg border border-darkBorder p-2 rounded-xl text-xs outline-none focus:border-purple-500" placeholder="0.00">
+            <!-- Tasa BCV y Estado de Usuario -->
+            <div class="flex items-center space-x-4">
+                <div class="hidden sm:flex flex-col text-right">
+                    <span class="text-xs text-slate-400">Tasa Oficial BCV</span>
+                    <span id="bcv-rate-display" class="text-sm font-semibold text-emerald-400">Cargando...</span>
+                </div>
+                <div id="user-profile-nav" class="hidden flex items-center space-x-3 border-l border-slate-700 pl-4">
+                    <div class="text-right">
+                        <p id="nav-username" class="text-sm font-medium text-slate-200">Usuario</p>
+                        <span id="nav-role" class="text-xs text-indigo-400">Rol</span>
                     </div>
-                    <div class="flex flex-col gap-1">
-                        <label class="text-[10px] text-slate-400 font-semibold">Moneda del abono</label>
-                        <select id="abono-cuota-moneda" onchange="calcularConversionAbono()" class="bg-darkBg border border-darkBorder p-2 rounded-xl text-xs outline-none focus:border-purple-500">
-                            <option value="USDT">USDT ($)</option>
-                            <option value="VES">Bolívares (Bs)</option>
-                        </select>
-                    </div>
-                </div>
-                <p class="text-[10px] text-slate-400" id="txt-abono-conversion"></p>
-                <div class="flex justify-end gap-2 pt-1">
-                    <button onclick="cancelarAbonoCuota()" class="px-3 py-1.5 bg-slate-800 text-slate-300 text-xs font-bold rounded-lg hover:bg-slate-700 transition">Cancelar</button>
-                    <button onclick="confirmarAbonoCuota()" class="px-3 py-1.5 bg-purple-600 text-white text-xs font-bold rounded-lg hover:bg-purple-700 transition">Aplicar Pago</button>
+                    <button id="btn-logout" class="p-2 hover:bg-slate-700 rounded-lg text-rose-400 transition" title="Cerrar Sesión">
+                        <i data-lucide="log-out"></i>
+                    </button>
                 </div>
             </div>
-
-            <div class="flex justify-end gap-2 mt-4">
-                <button onclick="cerrarModalCuotas()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl transition">Cerrar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ================= PANTALLA DE AUTENTICACIÓN ================= -->
-    <div id="auth-screen" class="min-h-screen flex items-center justify-center p-4">
-        <div class="w-full max-w-sm bg-darkCard border border-darkBorder rounded-3xl p-6 shadow-xl">
-            <div class="flex items-center gap-3 mb-6 justify-center">
-                <span class="material-icons-round text-brandBlue text-3xl">account_balance_wallet</span>
-                <div>
-                    <h1 class="font-extrabold text-lg tracking-tight">Gestiones Online</h1>
-                    <span class="text-xs text-slate-400">Control Financiero</span>
-                </div>
-            </div>
-
-            <div class="flex border-b border-darkBorder mb-5">
-                <button id="tab-login-btn" onclick="mostrarTabAuth('login')" class="flex-1 py-2 text-sm font-bold text-slate-400 auth-tab-active">Iniciar sesión</button>
-                <button id="tab-register-btn" onclick="mostrarTabAuth('register')" class="flex-1 py-2 text-sm font-bold text-slate-400">Registrarse</button>
-            </div>
-
-            <!-- Formulario de Inicio de Sesión -->
-            <form id="form-login" class="space-y-4">
-                <div class="flex flex-col gap-1">
-                    <label class="text-xs font-bold text-slate-400">Usuario</label>
-                    <input type="text" id="login-usuario" autocomplete="username" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm" placeholder="Tu nombre de usuario" required>
-                </div>
-                <div class="flex flex-col gap-1">
-                    <label class="text-xs font-bold text-slate-400">Contraseña</label>
-                    <input type="password" id="login-password" autocomplete="current-password" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm" placeholder="••••••••" required>
-                </div>
-                <button type="submit" class="w-full py-3 bg-brandBlue text-white font-bold rounded-xl hover:opacity-90 active:scale-[0.98] transition">Entrar</button>
-                <p class="text-[10px] text-slate-500 text-center leading-relaxed">Usuario administrador por defecto: <strong>admin</strong> / contraseña: <strong>admin123</strong>. Cámbiala luego de tu primer ingreso.</p>
-            </form>
-
-            <!-- Formulario de Registro -->
-            <form id="form-register" class="space-y-4 hidden">
-                <div class="flex flex-col gap-1">
-                    <label class="text-xs font-bold text-slate-400">Nombre completo</label>
-                    <input type="text" id="register-nombre" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm" placeholder="Ej. María Pérez" required>
-                </div>
-                <div class="flex flex-col gap-1">
-                    <label class="text-xs font-bold text-slate-400">Usuario</label>
-                    <input type="text" id="register-usuario" autocomplete="username" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm" placeholder="Sin espacios" required>
-                </div>
-                <div class="flex flex-col gap-1">
-                    <label class="text-xs font-bold text-slate-400">Contraseña</label>
-                    <input type="password" id="register-password" autocomplete="new-password" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm" placeholder="Mínimo 4 caracteres" required>
-                </div>
-                <div class="flex flex-col gap-1">
-                    <label class="text-xs font-bold text-slate-400">Confirmar contraseña</label>
-                    <input type="password" id="register-password2" autocomplete="new-password" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm" placeholder="Repite tu contraseña" required>
-                </div>
-                <button type="submit" class="w-full py-3 bg-brandGreen text-white font-bold rounded-xl hover:opacity-90 active:scale-[0.98] transition">Crear cuenta</button>
-            </form>
-
-            <p id="auth-error" class="text-xs text-brandRed text-center mt-3 hidden"></p>
-        </div>
-    </div>
-
-    <!-- ================= CONTENEDOR PRINCIPAL DE LA APP ================= -->
-    <div id="app-shell" class="hidden min-h-screen flex flex-col md:flex-row">
-
-    <!-- Barra lateral de navegación -->
-    <aside class="hidden md:flex flex-col w-64 bg-darkCard border-r border-darkBorder h-screen sticky top-0 p-5">
-        <div class="flex items-center gap-3 mb-6">
-            <span class="material-icons-round text-brandBlue text-3xl">account_balance_wallet</span>
-            <div>
-                <h1 class="font-extrabold text-lg tracking-tight">Gestiones Online</h1>
-                <span class="text-xs text-slate-400">Control Financiero</span>
-            </div>
-        </div>
-
-        <div class="flex items-center gap-2 bg-slate-900/60 border border-darkBorder rounded-xl px-3 py-2 mb-4">
-            <span class="material-icons-round text-slate-400 text-lg">account_circle</span>
-            <div class="flex-grow overflow-hidden">
-                <span class="text-xs font-bold block truncate" id="sidebar-user-name">Usuario</span>
-                <span class="text-[10px] text-slate-400 block" id="sidebar-user-role">Miembro</span>
-            </div>
-            <button onclick="cerrarSesion()" title="Cerrar sesión" class="text-slate-400 hover:text-brandRed transition">
-                <span class="material-icons-round text-lg">logout</span>
-            </button>
-        </div>
-
-        <nav class="flex flex-col gap-1 flex-grow">
-            <button onclick="switchView('inicio')" class="nav-btn-sidebar flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition text-left" data-view="inicio">
-                <span class="material-icons-round">home</span> Inicio
-            </button>
-            <button onclick="switchView('ingresos')" class="nav-btn-sidebar flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition text-left" data-view="ingresos">
-                <span class="material-icons-round">trending_up</span> Ingresos
-            </button>
-            <button onclick="switchView('gastos')" class="nav-btn-sidebar flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition text-left" data-view="gastos">
-                <span class="material-icons-round">trending_down</span> Gastos
-            </button>
-            <button onclick="switchView('deudas')" class="nav-btn-sidebar flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition text-left" data-view="deudas">
-                <span class="material-icons-round">assignment_late</span> Deudas
-            </button>
-            <button onclick="switchView('clientes')" class="nav-btn-sidebar flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition text-left" data-view="clientes">
-                <span class="material-icons-round">people</span> Clientes
-            </button>
-            <button onclick="switchView('reportes')" class="nav-btn-sidebar flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition text-left" data-view="reportes">
-                <span class="material-icons-round">bar_chart</span> Reportes
-            </button>
-            <button id="nav-admin-sidebar" onclick="switchView('admin')" class="hidden nav-btn-sidebar items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition text-left" data-view="admin">
-                <span class="material-icons-round">admin_panel_settings</span> Administración
-            </button>
-        </nav>
-
-        <div class="border-t border-darkBorder pt-4">
-            <button onclick="switchView('config')" class="nav-btn-sidebar flex items-center gap-3 w-full px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition text-left" data-view="config">
-                <span class="material-icons-round">settings</span> Configuración
-            </button>
-        </div>
-    </aside>
-
-    <!-- Header para Vista Móvil -->
-    <header class="md:hidden flex items-center justify-between bg-darkCard px-4 py-3 border-b border-darkBorder sticky top-0 z-40">
-        <div class="flex items-center gap-2">
-            <span class="material-icons-round text-brandBlue text-2xl">account_balance_wallet</span>
-            <div class="flex flex-col">
-                <span class="font-bold text-xs leading-none">Gestiones Online</span>
-                <span class="text-[9px] text-brandBlue font-bold mt-0.5">BCV: <span id="global-rate-indicator-mobile">0.00</span> Bs.</span>
-            </div>
-        </div>
-        <div class="flex items-center gap-2">
-            <div class="flex items-center gap-2 bg-slate-800 px-2 py-1 rounded-full text-xs" id="connection-status">
-                <span class="material-icons-round text-brandGreen text-sm">wifi</span>
-                <span id="connection-text">Online</span>
-            </div>
-            <button onclick="cerrarSesion()" title="Cerrar sesión" class="text-slate-400 hover:text-brandRed transition">
-                <span class="material-icons-round text-xl">logout</span>
-            </button>
         </div>
     </header>
 
-    <!-- Área de Contenido Principal -->
-    <main class="flex-grow p-4 md:p-8 max-w-4xl mx-auto w-full">
-
-        <!-- ================= VIEW: INICIO ================= -->
-        <section id="view-inicio" class="app-view space-y-6">
-            <!-- Tarjeta de Saldo Principal -->
-            <div class="bg-gradient-to-br from-slate-900 to-slate-850 p-6 rounded-3xl border border-slate-800 shadow-xl relative overflow-hidden">
-                <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-brandGreen opacity-5 rounded-full blur-2xl"></div>
-
-                <span class="text-xs font-bold text-slate-400 tracking-wider uppercase">Saldo Estimado Total</span>
-                <div class="flex items-baseline gap-2 mt-1">
-                    <h2 class="text-3xl md:text-4xl font-extrabold text-brandGreen" id="total-balance-usd">$0.00</h2>
-                    <span class="text-sm text-slate-400">USD Equiv.</span>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-slate-800/80">
-                    <div>
-                        <span class="text-xs text-slate-400 block mb-1">Caja en Bolívares (VES)</span>
-                        <span class="text-lg font-bold" id="balance-ves">0.00 Bs</span>
-                    </div>
-                    <div>
-                        <span class="text-xs text-slate-400 block mb-1">Caja en Dólares (USDT)</span>
-                        <span class="text-lg font-bold text-brandBlue" id="balance-usdt">0.00 USDT</span>
-                    </div>
-                </div>
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6">
+        
+        <!-- PANTALLA DE AUTENTICACIÓN (LOGIN / REGISTRO) -->
+        <section id="auth-section" class="max-w-md mx-auto my-12 bg-slate-800 border border-slate-700 rounded-2xl p-8 shadow-xl">
+            <div class="text-center mb-8">
+                <h2 id="auth-title" class="text-2xl font-bold text-slate-100">Iniciar Sesión</h2>
+                <p id="auth-subtitle" class="text-slate-400 text-sm mt-2">Accede para gestionar tus finanzas</p>
             </div>
-
-            <!-- Resumen Rápido -->
-            <div class="grid grid-cols-2 gap-4">
-                <div class="bg-darkCard p-4 rounded-2xl border border-darkBorder flex items-center gap-3">
-                    <div class="p-2 bg-brandGreen/10 rounded-xl text-brandGreen">
-                        <span class="material-icons-round">trending_up</span>
-                    </div>
-                    <div>
-                        <span class="text-[10px] text-slate-400 block uppercase font-semibold">Ingresos Hoy</span>
-                        <span class="text-xs md:text-sm font-bold" id="today-income">0 Bs / 0 $</span>
+            
+            <form id="auth-form" class="space-y-5">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Usuario</label>
+                    <div class="relative">
+                        <i data-lucide="user" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5"></i>
+                        <input type="text" id="auth-username" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-11 pr-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition" placeholder="Introduce tu usuario">
                     </div>
                 </div>
-
-                <div class="bg-darkCard p-4 rounded-2xl border border-darkBorder flex items-center gap-3">
-                    <div class="p-2 bg-brandRed/10 rounded-xl text-brandRed">
-                        <span class="material-icons-round">trending_down</span>
-                    </div>
-                    <div>
-                        <span class="text-[10px] text-slate-400 block uppercase font-semibold">Gastos Hoy</span>
-                        <span class="text-xs md:text-sm font-bold" id="today-expense">0 Bs / 0 $</span>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Contraseña</label>
+                    <div class="relative">
+                        <i data-lucide="lock" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5"></i>
+                        <input type="password" id="auth-password" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-11 pr-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition" placeholder="••••••••">
                     </div>
                 </div>
-            </div>
-
-            <!-- Asistente Financiero -->
-            <div class="bg-brandBlue/10 border border-brandBlue/30 rounded-3xl p-5 relative overflow-hidden">
-                <div class="flex items-center gap-3 mb-3">
-                    <div class="w-8 h-8 rounded-full bg-brandBlue flex items-center justify-center">
-                        <span class="material-icons-round text-white text-base">psychology</span>
-                    </div>
-                    <h3 class="font-bold text-sm text-brandBlue">Asistente de Estrategia Financiera</h3>
-                </div>
-                <div id="ai-suggestion" class="text-xs md:text-sm leading-relaxed text-slate-200">
-                    Cargando recomendaciones...
-                </div>
-            </div>
-
-            <!-- Últimos Movimientos -->
-            <div class="bg-darkCard rounded-2xl border border-darkBorder p-5">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-bold text-sm uppercase text-slate-400 tracking-wider">Movimientos Recientes</h3>
-                    <button onclick="switchView('reportes')" class="text-xs text-brandBlue font-bold hover:underline">Ver Todo</button>
-                </div>
-                <div class="space-y-3" id="recent-transactions-list"></div>
-            </div>
-        </section>
-
-        <!-- ================= VIEW: INGRESOS ================= -->
-        <section id="view-ingresos" class="app-view hidden space-y-6">
-            <h2 class="text-xl font-bold border-l-4 border-brandBlue pl-3">Registrar Ingreso de Fondos</h2>
-
-            <form id="form-ingreso" class="bg-darkCard border border-darkBorder p-6 rounded-2xl space-y-4">
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="flex flex-col gap-1">
-                        <label class="text-xs font-bold text-slate-400">Monto</label>
-                        <input type="number" step="0.01" id="ingreso-monto" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm" placeholder="0.00" required>
-                    </div>
-                    <div class="flex flex-col gap-1">
-                        <label class="text-xs font-bold text-slate-400">Moneda</label>
-                        <select id="ingreso-moneda" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm" required>
-                            <option value="VES">Bolívares (VES)</option>
-                            <option value="USDT">USDT (Dólares)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="flex flex-col gap-1">
-                    <label class="text-xs font-bold text-slate-400">Concepto / Descripción</label>
-                    <input type="text" id="ingreso-concepto" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm" placeholder="Ej. Gestión de trámites / Pago de CV" required>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="flex flex-col gap-1">
-                        <label class="text-xs font-bold text-slate-400">Cliente Asociado</label>
-                        <select id="ingreso-cliente" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm">
-                            <option value="">Particular / Público general</option>
-                        </select>
-                    </div>
-                    <div class="flex flex-col gap-1">
-                        <label class="text-xs font-bold text-slate-400">Método de Pago</label>
-                        <select id="ingreso-metodo" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm" required>
-                            <option value="Pago Móvil">Pago Móvil</option>
-                            <option value="USDT - Binance">USDT - Binance Pay</option>
-                            <option value="Efectivo VES">Efectivo VES</option>
-                            <option value="Efectivo USD">Efectivo USD</option>
-                            <option value="Transferencia Bancaria">Transferencia Bancaria</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="flex flex-col gap-1">
-                    <label class="text-xs font-bold text-slate-400">Fecha del Registro</label>
-                    <input type="date" id="ingreso-fecha" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm" required>
-                </div>
-
-                <button type="submit" class="w-full py-3 bg-brandGreen text-white font-bold rounded-xl hover:opacity-90 active:scale-[0.98] transition">Guardar Ingreso</button>
-            </form>
-        </section>
-
-        <!-- ================= VIEW: GASTOS ================= -->
-        <section id="view-gastos" class="app-view hidden space-y-6">
-            <h2 class="text-xl font-bold border-l-4 border-brandRed pl-3">Registrar Gasto o Egreso</h2>
-
-            <form id="form-gasto" class="bg-darkCard border border-darkBorder p-6 rounded-2xl space-y-4">
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="flex flex-col gap-1">
-                        <label class="text-xs font-bold text-slate-400">Monto</label>
-                        <input type="number" step="0.01" id="gasto-monto" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandRed outline-none text-sm" placeholder="0.00" required>
-                    </div>
-                    <div class="flex flex-col gap-1">
-                        <label class="text-xs font-bold text-slate-400">Moneda</label>
-                        <select id="gasto-moneda" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandRed outline-none text-sm" required>
-                            <option value="VES">Bolívares (VES)</option>
-                            <option value="USDT">USDT (Dólares)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="flex flex-col gap-1">
-                        <label class="text-xs font-bold text-slate-400">Categoría</label>
-                        <select id="gasto-categoria" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandRed outline-none text-sm" required>
-                            <option value="Servicios">Servicios (Luz, Internet, etc)</option>
-                            <option value="Materiales">Materiales e Insumos</option>
-                            <option value="Marketing">Publicidad y Promoción</option>
-                            <option value="Impuestos">Impuestos / Comisiones</option>
-                            <option value="Personal">Gastos Personales / Retiros</option>
-                            <option value="Otros">Otros egresos menores</option>
-                        </select>
-                    </div>
-                    <div class="flex flex-col gap-1">
-                        <label class="text-xs font-bold text-slate-400">Fecha del Gasto</label>
-                        <input type="date" id="gasto-fecha" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandRed outline-none text-sm" required>
-                    </div>
-                </div>
-
-                <div class="flex flex-col gap-1">
-                    <label class="text-xs font-bold text-slate-400">Descripción detallada</label>
-                    <input type="text" id="gasto-descripcion" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandRed outline-none text-sm" placeholder="Ej. Compra de resmas de papel para gestiones" required>
-                </div>
-
-                <button type="submit" class="w-full py-3 bg-brandRed text-white font-bold rounded-xl hover:opacity-90 active:scale-[0.98] transition">Guardar Gasto</button>
-            </form>
-        </section>
-
-        <!-- ================= VIEW: DEUDAS ================= -->
-        <section id="view-deudas" class="app-view hidden space-y-6">
-            <h2 class="text-xl font-bold border-l-4 border-yellow-500 pl-3">Control de Pasivos y Deudas</h2>
-
-            <!-- Formulario de Deudas -->
-            <div class="bg-darkCard border border-darkBorder p-5 rounded-2xl space-y-4">
-                <h3 class="font-bold text-sm text-yellow-500 uppercase">Añadir Deuda / Compromiso</h3>
-                <form id="form-deuda" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="flex flex-col gap-1">
-                        <label class="text-xs font-bold text-slate-400">Acreedor</label>
-                        <input type="text" id="deuda-acreedor" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" placeholder="Ej. Cashea / Proveedor" required>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div class="flex flex-col gap-1">
-                            <label class="text-xs font-bold text-slate-400">Monto del Producto ($ / Bs)</label>
-                            <input type="number" step="0.01" id="deuda-monto" oninput="autocalcularRestanteCashea()" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" placeholder="Ej. 25.00" required>
-                        </div>
-                        <div class="flex flex-col gap-1">
-                            <label class="text-xs font-bold text-slate-400">Moneda</label>
-                            <select id="deuda-moneda" onchange="autocalcularRestanteCashea()" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" required>
-                                <option value="USDT">USDT ($)</option>
-                                <option value="VES">VES (Bs)</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="flex flex-col gap-1">
-                        <label class="text-xs font-bold text-slate-400" id="lbl-deuda-fecha">Fecha de Compra</label>
-                        <input type="date" id="deuda-vencimiento" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" required>
-                    </div>
-                    <div class="flex flex-col gap-1">
-                        <label class="text-xs font-bold text-slate-400">Tasa de Interés (% / Opcional)</label>
-                        <input type="number" step="0.1" id="deuda-interes" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" value="0">
-                    </div>
-
-                    <!-- Configuración Especial Cashea -->
-                    <div class="md:col-span-2 bg-slate-900/60 border border-darkBorder rounded-xl p-4 space-y-3">
-                        <label class="flex items-center gap-3 cursor-pointer select-none">
-                            <input type="checkbox" id="deuda-es-cashea" class="w-4 h-4 accent-yellow-500" onchange="toggleCamposCashea()">
-                            <span class="text-sm font-bold text-slate-200">¿Es una compra financiada (tipo Cashea)?</span>
-                        </label>
-                        <div id="campos-cashea" class="hidden grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
-                            <div class="flex flex-col gap-1">
-                                <label class="text-xs font-bold text-slate-400">Pago Inicial / Pie</label>
-                                <input type="number" step="0.01" id="deuda-inicial" oninput="autocalcularRestanteCashea()" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" placeholder="Ej. 10.00">
-                            </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="text-xs font-bold text-slate-400">N° Cuotas Restantes</label>
-                                <input type="number" min="1" step="1" id="deuda-total-cuotas" oninput="autocalcularRestanteCashea()" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-yellow-500 outline-none text-sm" placeholder="Ej. 3">
-                            </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="text-xs font-bold text-slate-400">Monto por Cuota (Restante)</label>
-                                <input type="number" step="0.01" id="deuda-monto-cuota" class="bg-slate-950 border border-darkBorder p-3 rounded-xl text-slate-400 text-sm cursor-not-allowed" placeholder="0.00" readonly>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="md:col-span-2">
-                        <button type="submit" class="w-full py-3 bg-yellow-500 text-slate-950 font-bold rounded-xl hover:opacity-90 transition">Registrar Deuda</button>
-                    </div>
-                </form>
-            </div>
-
-            <!-- Listado de Deudas -->
-            <div class="bg-darkCard rounded-2xl border border-darkBorder p-5">
-                <h3 class="font-bold text-sm text-slate-400 uppercase tracking-wider mb-4">Deudas Registradas</h3>
-                <div class="space-y-3" id="debts-list"></div>
-            </div>
-        </section>
-
-        <!-- ================= VIEW: CLIENTES ================= -->
-        <section id="view-clientes" class="app-view hidden space-y-6">
-            <h2 class="text-xl font-bold border-l-4 border-teal-500 pl-3">Directorio de Clientes</h2>
-
-            <form id="form-cliente" class="bg-darkCard border border-darkBorder p-5 rounded-2xl grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-                <div class="flex flex-col gap-1">
-                    <label class="text-xs font-bold text-slate-400">Nombre Completo</label>
-                    <input type="text" id="cliente-nombre" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-teal-500 outline-none text-sm" placeholder="Ej. Carlos Mendoza" required>
-                </div>
-                <div class="flex flex-col gap-1">
-                    <label class="text-xs font-bold text-slate-400">Teléfono (WhatsApp)</label>
-                    <input type="text" id="cliente-telefono" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-teal-500 outline-none text-sm" placeholder="Ej. +58 412..." required>
-                </div>
-                <button type="submit" class="py-3 bg-teal-500 text-slate-950 font-bold rounded-xl hover:opacity-90 transition">Agregar Cliente</button>
+                
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-indigo-600/20 transition-all duration-200 transform hover:-translate-y-0.5">
+                    Entrar a la Plataforma
+                </button>
             </form>
 
-            <div class="bg-darkCard rounded-2xl border border-darkBorder p-5">
-                <h3 class="font-bold text-sm text-slate-400 uppercase tracking-wider mb-4">Cartera de Clientes</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="clients-grid"></div>
+            <div class="mt-6 text-center">
+                <button id="toggle-auth-mode" class="text-sm text-indigo-400 hover:text-indigo-300 transition">¿No tienes cuenta? Regístrate aquí</button>
             </div>
         </section>
 
-        <!-- ================= VIEW: REPORTES ================= -->
-        <section id="view-reportes" class="app-view hidden space-y-6">
-            <h2 class="text-xl font-bold border-l-4 border-indigo-500 pl-3">Estados Financieros e Historial</h2>
-
-            <div class="bg-darkCard rounded-2xl border border-darkBorder p-5 space-y-4">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-                    <h3 class="font-bold text-sm text-slate-400 uppercase tracking-wider">Historial de Transacciones</h3>
-                    <div class="flex gap-2 w-full md:w-auto">
-                        <button onclick="exportToJSON()" class="flex items-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs transition">
-                            <span class="material-icons-round text-sm">download</span> Descargar JSON
-                        </button>
-                        <button onclick="window.print()" class="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg text-xs transition">
-                            <span class="material-icons-round text-sm">print</span> Imprimir / PDF
-                        </button>
+        <!-- DASHBOARD GENERAL (CONTENIDO PRINCIPAL) -->
+        <section id="dashboard-section" class="hidden space-y-6">
+            
+            <!-- Resumen de Saldos (Cards) -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-gradient-to-br from-indigo-950 to-slate-800 border border-indigo-500/20 rounded-2xl p-5 shadow-md">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wider text-indigo-300">Caja Disponible ($)</p>
+                            <h3 id="balance-usd" class="text-2xl font-bold mt-2 text-white">$0.00</h3>
+                        </div>
+                        <span class="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg"><i data-lucide="banknote"></i></span>
                     </div>
                 </div>
-
-                <div class="grid grid-cols-3 gap-2">
-                    <select id="filter-type" onchange="renderHistoryTable()" class="bg-darkBg border border-darkBorder p-2 rounded-xl text-xs outline-none">
-                        <option value="all">Todos los tipos</option>
-                        <option value="ingreso">Ingresos</option>
-                        <option value="gasto">Gastos</option>
-                    </select>
-                    <select id="filter-currency" onchange="renderHistoryTable()" class="bg-darkBg border border-darkBorder p-2 rounded-xl text-xs outline-none">
-                        <option value="all">Todas las monedas</option>
-                        <option value="VES">VES (Bs)</option>
-                        <option value="USDT">USDT ($)</option>
-                    </select>
-                    <button onclick="clearAllTransactions()" class="p-2 border border-brandRed/30 text-brandRed bg-brandRed/5 rounded-xl hover:bg-brandRed/15 text-xs font-bold transition">Limpiar Todo</button>
-                </div>
-
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-xs border-collapse">
-                        <thead>
-                            <tr class="border-b border-darkBorder text-slate-400">
-                                <th class="pb-3 font-semibold">Fecha</th>
-                                <th class="pb-3 font-semibold">Tipo</th>
-                                <th class="pb-3 font-semibold">Detalle / Concepto</th>
-                                <th class="pb-3 font-semibold text-right">Monto</th>
-                            </tr>
-                        </thead>
-                        <tbody id="history-table-body" class="divide-y divide-slate-800/50"></tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
-
-        <!-- ================= VIEW: ADMINISTRACIÓN ================= -->
-        <section id="view-admin" class="app-view hidden space-y-6">
-            <h2 class="text-xl font-bold border-l-4 border-purple-500 pl-3">Panel de Administrador</h2>
-
-            <div class="grid grid-cols-3 gap-3">
-                <div class="bg-darkCard p-4 rounded-2xl border border-darkBorder text-center">
-                    <span class="text-2xl font-extrabold text-purple-400 block" id="admin-total-usuarios">0</span>
-                    <span class="text-[10px] text-slate-400 uppercase font-semibold">Usuarios</span>
-                </div>
-                <div class="bg-darkCard p-4 rounded-2xl border border-darkBorder text-center">
-                    <span class="text-2xl font-extrabold text-brandGreen block" id="admin-total-movimientos">0</span>
-                    <span class="text-[10px] text-slate-400 uppercase font-semibold">Movimientos</span>
-                </div>
-                <div class="bg-darkCard p-4 rounded-2xl border border-darkBorder text-center">
-                    <span class="text-2xl font-extrabold text-yellow-500 block" id="admin-total-deudas">0</span>
-                    <span class="text-[10px] text-slate-400 uppercase font-semibold">Deudas activas</span>
-                </div>
-            </div>
-
-            <div class="bg-darkCard rounded-2xl border border-darkBorder p-5">
-                <h3 class="font-bold text-sm text-slate-400 uppercase tracking-wider mb-4">Usuarios Registrados</h3>
-                <div class="space-y-3" id="admin-users-list"></div>
-            </div>
-
-            <div class="bg-darkCard border border-darkBorder p-5 rounded-2xl space-y-3">
-                <h3 class="font-bold text-sm text-slate-300 uppercase">Tasa de Cambio BCV (global)</h3>
-                <p class="text-[11px] text-slate-400">Esta tasa aplica para todos los usuarios de la plataforma. Se sincroniza automáticamente con el Banco Central de Venezuela.</p>
-                <button onclick="sincronizarTasaBCV().then(()=>{actualizarPanelPrincipal(false); renderizarAdmin();})" class="py-2 px-5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs transition">Forzar sincronización ahora</button>
-            </div>
-
-            <div class="bg-darkCard border border-darkBorder p-5 rounded-2xl space-y-4">
-                <h3 class="font-bold text-sm text-brandRed uppercase">Zona de Peligro (Global)</h3>
-                <p class="text-xs text-slate-400">Esto borrará TODA la base de datos.</p>
-                <button onclick="factoryResetGlobal()" class="py-3 px-6 border border-brandRed text-brandRed bg-brandRed/5 hover:bg-brandRed/15 rounded-xl font-bold text-sm transition">Restablecer Aplicación Completa</button>
-            </div>
-        </section>
-
-        <!-- ================= VIEW: CONFIGURACIÓN ================= -->
-        <section id="view-config" class="app-view hidden space-y-6">
-            <h2 class="text-xl font-bold border-l-4 border-slate-500 pl-3">Ajustes del Sistema</h2>
-
-            <div class="bg-darkCard border border-darkBorder p-5 rounded-2xl space-y-4">
-                <h3 class="font-bold text-sm text-slate-300 uppercase">Tasa de Cambio del Día</h3>
-                <div class="flex items-end gap-3 max-w-sm">
-                    <div class="flex flex-col gap-1 flex-grow">
-                        <label class="text-xs font-bold text-slate-400">Valor de 1 USDT en Bolívares (VES)</label>
-                        <input type="number" step="0.01" id="config-tasa" class="bg-darkBg border border-darkBorder p-3 rounded-xl focus:border-brandBlue outline-none text-sm" placeholder="Ej. 40.00" value="40.00">
+                <div class="bg-gradient-to-br from-emerald-950 to-slate-800 border border-emerald-500/20 rounded-2xl p-5 shadow-md">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wider text-emerald-300">Caja Disponible (BS)</p>
+                            <h3 id="balance-ves" class="text-2xl font-bold mt-2 text-white">Bs 0.00</h3>
+                        </div>
+                        <span class="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg"><i data-lucide="coins"></i></span>
                     </div>
-                    <button onclick="guardarTasaCambio()" class="py-3 px-6 bg-brandBlue text-white font-bold rounded-xl hover:opacity-90 transition text-sm">Actualizar</button>
                 </div>
-                <p class="text-[11px] text-slate-400 font-bold text-brandGreen flex items-center gap-1" id="config-bcv-status"></p>
-                <p class="text-[11px] text-slate-400">Esta tasa se utiliza para calcular el equivalente unificado en USD. Se sincroniza con el BCV al iniciar sesión, forzar sync o automáticamente todos los días a las 6:00 PM.</p>
+                <div class="bg-gradient-to-br from-amber-950 to-slate-800 border border-amber-500/20 rounded-2xl p-5 shadow-md">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wider text-amber-300">Cobros Pendientes</p>
+                            <h3 id="pending-receivables" class="text-2xl font-bold mt-2 text-white">$0.00</h3>
+                        </div>
+                        <span class="p-2 bg-amber-500/10 text-amber-400 rounded-lg"><i data-lucide="trending-up"></i></span>
+                    </div>
+                </div>
+                <div class="bg-gradient-to-br from-rose-950 to-slate-800 border border-rose-500/20 rounded-2xl p-5 shadow-md">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wider text-rose-300">Deudas Pendientes</p>
+                            <h3 id="pending-payables" class="text-2xl font-bold mt-2 text-white">$0.00</h3>
+                        </div>
+                        <span class="p-2 bg-rose-500/10 text-rose-400 rounded-lg"><i data-lucide="trending-down"></i></span>
+                    </div>
+                </div>
             </div>
 
-            <div class="bg-darkCard border border-darkBorder p-5 rounded-2xl space-y-4">
-                <h3 class="font-bold text-sm text-slate-300 uppercase">Mi Cuenta</h3>
-                <p class="text-xs text-slate-400">Sesión iniciada como <strong id="config-usuario-actual">-</strong>.</p>
-                <button onclick="cerrarSesion()" class="py-3 px-6 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-sm transition">Cerrar Sesión</button>
+            <!-- NAVEGACIÓN DE PESTAÑAS -->
+            <div class="flex border-b border-slate-700 overflow-x-auto hide-scrollbar space-x-1">
+                <button onclick="switchTab('transacciones')" class="tab-btn px-5 py-3 font-semibold text-sm border-b-2 transition whitespace-nowrap" id="tab-transacciones">Transacciones</button>
+                <button onclick="switchTab('compras')" class="tab-btn px-5 py-3 font-semibold text-sm border-b-2 transition whitespace-nowrap" id="tab-compras">Financiamientos (Cashea)</button>
+                <button onclick="switchTab('deudas')" class="tab-btn px-5 py-3 font-semibold text-sm border-b-2 transition whitespace-nowrap" id="tab-deudas">Cuentas por Pagar/Cobrar</button>
+                <button onclick="switchTab('admin')" class="tab-btn px-5 py-3 font-semibold text-sm border-b-2 transition whitespace-nowrap hidden" id="tab-admin">Panel de Administración</button>
             </div>
 
-            <div class="bg-darkCard border border-darkBorder p-5 rounded-2xl space-y-4">
-                <h3 class="font-bold text-sm text-brandRed uppercase">Zona de Peligro</h3>
-                <p class="text-xs text-slate-400">Al presionar el siguiente botón borrarás por completo TUS datos locales.</p>
-                <button onclick="factoryReset()" class="py-3 px-6 border border-brandRed text-brandRed bg-brandRed/5 hover:bg-brandRed/15 rounded-xl font-bold text-sm transition">Borrar Mis Datos</button>
+            <!-- SECCIÓN: TRANSACCIONES -->
+            <div id="panel-transacciones" class="tab-panel hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Formulario de Ingreso / Egreso -->
+                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 h-fit">
+                        <h4 class="font-bold text-lg mb-4 text-slate-200">Registrar Operación</h4>
+                        <form id="tx-form" class="space-y-4">
+                            <div class="grid grid-cols-2 gap-2">
+                                <button type="button" id="tx-type-ingreso" class="tx-type-btn py-2.5 rounded-xl font-bold text-sm bg-indigo-600 text-white border-2 border-indigo-500 transition">INGRESO</button>
+                                <button type="button" id="tx-type-egreso" class="tx-type-btn py-2.5 rounded-xl font-bold text-sm bg-slate-900 text-slate-400 border border-slate-700 hover:border-slate-600 transition">EGRESO</button>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Monto</label>
+                                <div class="relative">
+                                    <input type="number" id="tx-monto" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="0.00">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Moneda</label>
+                                <select id="tx-moneda" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500">
+                                    <option value="USD">Dólares (USD / USDT)</option>
+                                    <option value="VES">Bolívares (VES)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Descripción</label>
+                                <input type="text" id="tx-descripcion" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="Ej. Pago de servicio de transcripción">
+                            </div>
+                            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition">Guardar Transacción</button>
+                        </form>
+                    </div>
+
+                    <!-- Historial de Transacciones -->
+                    <div class="lg:col-span-2 bg-slate-800 border border-slate-700 rounded-2xl p-6">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+                            <h4 class="font-bold text-lg text-slate-200">Historial Reciente</h4>
+                            <div class="flex items-center gap-2">
+                                <select id="filter-tx-type" class="bg-slate-900 border border-slate-700 text-xs rounded-xl px-3 py-2 text-slate-300 focus:outline-none focus:border-indigo-500">
+                                    <option value="todos">Todos los flujos</option>
+                                    <option value="ingreso">Ingresos</option>
+                                    <option value="egreso">Egresos</option>
+                                </select>
+                                <button onclick="exportData()" class="p-2 bg-slate-900 hover:bg-slate-700 border border-slate-700 rounded-xl text-slate-300 transition" title="Exportar Copia JSON">
+                                    <i data-lucide="download" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="border-b border-slate-700 text-slate-400 text-xs uppercase tracking-wider font-semibold">
+                                        <th class="pb-3">Detalle / Fecha</th>
+                                        <th class="pb-3">Tipo</th>
+                                        <th class="pb-3 text-right">Monto</th>
+                                        <th class="pb-3 text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tx-table-body" class="divide-y divide-slate-800 text-sm">
+                                    <!-- Dinámico -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
+
+            <!-- SECCIÓN: FINANCIAMIENTOS CASHEA -->
+            <div id="panel-compras" class="tab-panel hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Registro de Financiamiento -->
+                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 h-fit">
+                        <h4 class="font-bold text-lg mb-4 text-indigo-400 flex items-center gap-2">
+                            <i data-lucide="percent"></i> Nuevo Financiamiento
+                        </h4>
+                        <form id="purchase-form" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Artículo / Concepto</label>
+                                <input type="text" id="pur-item" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="Ej. Teléfono Celular">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Monto Total ($)</label>
+                                <input type="number" id="pur-total" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="0.00">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">Inicial ($)</label>
+                                    <input type="number" id="pur-downpayment" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="Ej. 60.00">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">N° de Cuotas</label>
+                                    <select id="pur-installments" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500">
+                                        <option value="3">3 Cuotas</option>
+                                        <option value="4">4 Cuotas</option>
+                                        <option value="6">6 Cuotas</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition">Dividir & Registrar</button>
+                        </form>
+                    </div>
+
+                    <!-- Lista de Financiamientos Activos -->
+                    <div class="lg:col-span-2 bg-slate-800 border border-slate-700 rounded-2xl p-6">
+                        <h4 class="font-bold text-lg mb-6 text-slate-200">Planes de Financiamiento</h4>
+                        <div id="purchases-list" class="space-y-4">
+                            <!-- Dinámico -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN: CUENTAS POR COBRAR / PAGAR -->
+            <div id="panel-deudas" class="tab-panel hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Nueva Deuda / Cobro -->
+                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 h-fit">
+                        <h4 class="font-bold text-lg mb-4 text-slate-200">Registrar Cuenta</h4>
+                        <form id="debt-form" class="space-y-4">
+                            <div class="grid grid-cols-2 gap-2">
+                                <button type="button" id="debt-type-cobrar" class="debt-type-btn py-2.5 rounded-xl font-bold text-sm bg-indigo-600 text-white border-2 border-indigo-500 transition">POR COBRAR</button>
+                                <button type="button" id="debt-type-pagar" class="debt-type-btn py-2.5 rounded-xl font-bold text-sm bg-slate-900 text-slate-400 border border-slate-700 hover:border-slate-600 transition">POR PAGAR</button>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Persona / Cliente</label>
+                                <input type="text" id="debt-person" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="Nombre de la persona">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Concepto</label>
+                                <input type="text" id="debt-concept" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="Ej. Préstamo personal o servicio">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Monto Inicial ($)</label>
+                                <input type="number" id="debt-amount" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="0.00">
+                            </div>
+                            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition">Guardar Cuenta</button>
+                        </form>
+                    </div>
+
+                    <!-- Lista de Cuentas -->
+                    <div class="lg:col-span-2 bg-slate-800 border border-slate-700 rounded-2xl p-6">
+                        <h4 class="font-bold text-lg mb-6 text-slate-200 font-semibold">Cuentas Pendientes de Cobro y Pago</h4>
+                        <div id="debts-list" class="space-y-4">
+                            <!-- Dinámico -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN: PANEL DE ADMINISTRACIÓN -->
+            <div id="panel-admin" class="tab-panel hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Configuración y Sincronización -->
+                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 space-y-6">
+                        <div>
+                            <h4 class="font-bold text-lg mb-2 text-slate-200">Sincronización BCV</h4>
+                            <p class="text-xs text-slate-400 mb-4">La tasa se actualiza de manera automática cada día a las 18:00 o puedes forzarla de manera manual.</p>
+                            <button onclick="fetchBCVRate(true)" class="flex items-center justify-center gap-2 w-full bg-slate-900 hover:bg-slate-700 border border-slate-700 text-slate-200 py-3 rounded-xl transition">
+                                <i data-lucide="refresh-cw" class="w-4 h-4"></i> Actualizar Tasa Manualmente
+                            </button>
+                        </div>
+                        <hr class="border-slate-700" />
+                        <div>
+                            <h4 class="font-bold text-lg mb-2 text-slate-200">Eliminación de Datos</h4>
+                            <p class="text-xs text-slate-400 mb-4">Esta acción restablecerá por completo toda la base de datos local borrando transacciones, cuotas e historiales.</p>
+                            <button onclick="dangerWipeDatabase()" class="flex items-center justify-center gap-2 w-full bg-rose-950/40 hover:bg-rose-900 border border-rose-800 text-rose-300 py-3 rounded-xl transition">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i> Restablecer Base de Datos
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Lista de Usuarios Existentes -->
+                    <div class="lg:col-span-2 bg-slate-800 border border-slate-700 rounded-2xl p-6">
+                        <h4 class="font-bold text-lg mb-4 text-slate-200">Gestión de Usuarios del Sistema</h4>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="border-b border-slate-700 text-slate-400 text-xs uppercase tracking-wider font-semibold">
+                                        <th class="pb-3">Nombre de Usuario</th>
+                                        <th class="pb-3">Rol del Sistema</th>
+                                        <th class="pb-3 text-right">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="users-table-body" class="divide-y divide-slate-800 text-sm">
+                                    <!-- Dinámico -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </section>
 
     </main>
 
-    <!-- Barra de Navegación Inferior para Vista Móvil -->
-    <nav class="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-darkCard border-t border-darkBorder flex justify-around items-center z-50">
-        <button onclick="switchView('inicio')" class="nav-btn-mobile flex flex-col items-center justify-center gap-1 w-1/6 text-slate-400 transition" data-view="inicio">
-            <span class="material-icons-round text-[22px]">home</span>
-            <span class="text-[9px]">Inicio</span>
-        </button>
-        <button onclick="switchView('ingresos')" class="nav-btn-mobile flex flex-col items-center justify-center gap-1 w-1/6 text-slate-400 transition" data-view="ingresos">
-            <span class="material-icons-round text-[22px]">trending_up</span>
-            <span class="text-[9px]">Ingresos</span>
-        </button>
-        <button onclick="switchView('gastos')" class="nav-btn-mobile flex flex-col items-center justify-center gap-1 w-1/6 text-slate-400 transition" data-view="gastos">
-            <span class="material-icons-round text-[22px]">trending_down</span>
-            <span class="text-[9px]">Gastos</span>
-        </button>
-        <button onclick="switchView('deudas')" class="nav-btn-mobile flex flex-col items-center justify-center gap-1 w-1/6 text-slate-400 transition" data-view="deudas">
-            <span class="material-icons-round text-[22px]">assignment_late</span>
-            <span class="text-[9px]">Deudas</span>
-        </button>
-        <button onclick="switchView('clientes')" class="nav-btn-mobile flex flex-col items-center justify-center gap-1 w-1/6 text-slate-400 transition" data-view="clientes">
-            <span class="material-icons-round text-[22px]">people</span>
-            <span class="text-[9px]">Clientes</span>
-        </button>
-        <button onclick="switchView('reportes')" class="nav-btn-mobile flex flex-col items-center justify-center gap-1 w-1/6 text-slate-400 transition" data-view="reportes">
-            <span class="material-icons-round text-[22px]">bar_chart</span>
-            <span class="text-[9px]">Reportes</span>
-        </button>
-    </nav>
+    <!-- MODAL GENERAL PARA REGISTRO DE ABONOS -->
+    <div id="payment-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4">
+        <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onclick="closePaymentModal()"></div>
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 relative z-10 shadow-2xl">
+            <h4 class="font-bold text-lg mb-2 text-indigo-400">Procesar Abono / Pago</h4>
+            <p id="modal-concept-subtitle" class="text-xs text-slate-400 mb-6">Abonar saldo a la deuda activa</p>
+            
+            <form id="modal-payment-form" class="space-y-4">
+                <input type="hidden" id="modal-target-type">
+                <input type="hidden" id="modal-target-id">
+                <input type="hidden" id="modal-installment-idx">
 
+                <div>
+                    <p class="text-xs text-slate-400 mb-1">Monto Máximo Pendiente</p>
+                    <p id="modal-max-amount" class="text-sm font-semibold text-amber-400">$0.00</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">Monto del Abono ($)</label>
+                    <input type="number" id="modal-pay-amount" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="0.00">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">Método / Moneda de Pago</label>
+                    <select id="modal-pay-method" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500">
+                        <option value="USD">Divisas (Dólares / USDT) - Se resta de Caja USD</option>
+                        <option value="VES">Bolívares (VES) - Se resta de Caja VES calculando al BCV</option>
+                    </select>
+                </div>
+                <div id="modal-conversion-notice" class="hidden text-xs bg-slate-900/80 border border-slate-700/50 p-3 rounded-xl text-emerald-400">
+                    Calculando al BCV...
+                </div>
+                <div class="flex gap-2 justify-end pt-2">
+                    <button type="button" onclick="closePaymentModal()" class="px-4 py-2.5 rounded-xl border border-slate-600 text-slate-300 font-semibold text-sm hover:bg-slate-700 transition">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-emerald-600/10 transition">Registrar Abono</button>
+                </div>
+            </form>
+        </div>
     </div>
 
-    <!-- Código Javascript del Sistema -->
+    <!-- LOGICA DE LA APLICACIÓN -->
     <script>
-        // ============ 1. Inicialización de Base de Datos Dexie (multiusuario) ============
-        const db = new Dexie("GestionesOnlineFinanzasV2");
-        db.version(2).stores({
-            usuarios: '++id, usuario, rol',
-            ingresos: '++id, usuarioId, fecha, monto, moneda, concepto, cliente, metodoPago',
-            gastos: '++id, usuarioId, fecha, categoria, monto, moneda, descripcion',
-            deudas: '++id, usuarioId, acreedor, monto, moneda, vencimiento, interes, estado, esCashea',
-            clientes: '++id, usuarioId, nombre, telefono',
-            config: 'clave, valor'
+        // --- 1. CONFIGURACIÓN DE LA BASE DE DATOS LOCAL (DEXIE) ---
+        const db = new Dexie("InterFinanzasDB");
+        db.version(1).stores({
+            usuarios: '++id, &username, role',
+            transacciones: '++id, fecha, tipo, monto, moneda, descripcion, userId',
+            compras: '++id, item, total, downpayment, totalInstallments, installments, status, userId',
+            deudas: '++id, tipo, persona, concepto, montoTotal, montoPendiente, status, userId',
+            configuracion: 'key, value'
         });
 
-        // Tasa de cambio global por defecto
-        let TASA_USDT_A_VES = 40.0;
-        let usuarioActual = null;
+        // --- 2. VARIABLES DE ESTADO ---
+        let currentUser = null;
+        let bcvRate = 45.00; // Valor de respaldo inicial por si falla la conexión externa
+        let currentTxType = 'ingreso';
+        let currentDebtType = 'cobrar';
 
-        // Variables auxiliares para el abono de cuotas de Cashea
-        let deudaEnEdicionModal = null;
-        let cuotaSeleccionadaParaAbonar = null;
-
-        // ============ 2. Sistema de Notificaciones Toast ============
-        function showToast(message, type = 'success') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-
-            let bgClass = 'bg-brandGreen';
-            let icon = 'check_circle';
-            if (type === 'error') {
-                bgClass = 'bg-brandRed';
-                icon = 'error';
-            } else if (type === 'warning') {
-                bgClass = 'bg-yellow-500 text-slate-950';
-                icon = 'warning';
-            } else if (type === 'info') {
-                bgClass = 'bg-brandBlue';
-                icon = 'info';
-            }
-
-            toast.className = `${bgClass} flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-xs font-bold transition-all transform translate-y-5 opacity-0 duration-300 pointer-events-auto`;
-            toast.innerHTML = `
-                <span class="material-icons-round text-base">${icon}</span>
-                <span>${message}</span>
-            `;
-
-            container.appendChild(toast);
-            setTimeout(() => toast.classList.remove('translate-y-5', 'opacity-0'), 10);
-            setTimeout(() => {
-                toast.classList.add('translate-y-5', 'opacity-0');
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
-
-        // ============ 3. AUTENTICACIÓN ============
-        async function hashTexto(texto) {
-            const enc = new TextEncoder().encode(texto);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', enc);
+        // --- 3. ENCRIPTACIÓN DE CONTRASEÑA (SHA-256) ---
+        async function hashPassword(password) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
             return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
         }
 
-        function mostrarTabAuth(tab) {
-            const loginBtn = document.getElementById('tab-login-btn');
-            const registerBtn = document.getElementById('tab-register-btn');
-            const loginForm = document.getElementById('form-login');
-            const registerForm = document.getElementById('form-register');
-            document.getElementById('auth-error').classList.add('hidden');
+        // --- 4. INICIALIZACIÓN ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            lucide.createIcons();
+            await checkSeedUsers();
+            await fetchBCVRate();
+            await checkSession();
+            setupEventListeners();
+        });
 
-            if (tab === 'login') {
-                loginBtn.classList.add('auth-tab-active');
-                registerBtn.classList.remove('auth-tab-active');
-                loginForm.classList.remove('hidden');
-                registerForm.classList.add('hidden');
-            } else {
-                registerBtn.classList.add('auth-tab-active');
-                loginBtn.classList.remove('auth-tab-active');
-                registerForm.classList.remove('hidden');
-                loginForm.classList.add('hidden');
-            }
-        }
-
-        function mostrarErrorAuth(msg) {
-            const el = document.getElementById('auth-error');
-            el.textContent = msg;
-            el.classList.remove('hidden');
-        }
-
-        async function asegurarAdminPorDefecto() {
-            const total = await db.usuarios.count();
-            if (total === 0) {
-                const passHash = await hashTexto('admin123');
+        // Seed de usuario por defecto
+        async function checkSeedUsers() {
+            const count = await db.usuarios.count();
+            if (count === 0) {
+                const adminHash = await hashPassword('admin123');
                 await db.usuarios.add({
-                    usuario: 'admin',
-                    nombre: 'Administrador',
-                    passHash,
-                    rol: 'admin',
-                    fechaRegistro: new Date().toISOString().split('T')[0]
+                    username: 'admin',
+                    password: adminHash,
+                    role: 'admin'
                 });
             }
         }
 
-        document.getElementById('form-login').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const usuario = document.getElementById('login-usuario').value.trim().toLowerCase();
-            const password = document.getElementById('login-password').value;
+        // Obtener la tasa del BCV
+        async function fetchBCVRate(forced = false) {
+            try {
+                const storedRate = await db.configuracion.get('bcv_rate');
+                const lastUpdated = await db.configuracion.get('bcv_last_updated');
+                const now = Date.now();
 
-            const user = await db.usuarios.where('usuario').equals(usuario).first();
-            if (!user) {
-                mostrarErrorAuth('Usuario no encontrado.');
-                return;
+                // Actualizar si es forzado, no hay datos, o pasaron más de 12 horas
+                if (forced || !storedRate || !lastUpdated || (now - parseInt(lastUpdated.value)) > 12 * 60 * 60 * 1000) {
+                    const response = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+                    const data = await response.json();
+                    if (data && data.promedio) {
+                        bcvRate = parseFloat(data.promedio);
+                        await db.configuracion.put({ key: 'bcv_rate', value: bcvRate });
+                        await db.configuracion.put({ key: 'bcv_last_updated', value: now.toString() });
+                    }
+                } else {
+                    bcvRate = parseFloat(storedRate.value);
+                }
+            } catch (err) {
+                console.warn("Fallo al obtener tasa API. Usando tasa de respaldo o caché.", err);
+                const fallback = await db.configuracion.get('bcv_rate');
+                if (fallback) bcvRate = parseFloat(fallback.value);
             }
-            const hash = await hashTexto(password);
-            if (hash !== user.passHash) {
-                mostrarErrorAuth('Contraseña incorrecta.');
-                return;
-            }
-            iniciarSesionComo(user);
-        });
-
-        document.getElementById('form-register').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const nombre = document.getElementById('register-nombre').value.trim();
-            const usuario = document.getElementById('register-usuario').value.trim().toLowerCase().replace(/\s+/g, '');
-            const password = document.getElementById('register-password').value;
-            const password2 = document.getElementById('register-password2').value;
-
-            if (password.length < 4) {
-                mostrarErrorAuth('La contraseña debe tener al menos 4 caracteres.');
-                return;
-            }
-            if (password !== password2) {
-                mostrarErrorAuth('Las contraseñas no coinciden.');
-                return;
-            }
-            const existente = await db.usuarios.where('usuario').equals(usuario).first();
-            if (existente) {
-                mostrarErrorAuth('Ese nombre de usuario ya existe, elige otro.');
-                return;
-            }
-
-            const passHash = await hashTexto(password);
-            const nuevoId = await db.usuarios.add({
-                usuario,
-                nombre,
-                passHash,
-                rol: 'user',
-                fechaRegistro: new Date().toISOString().split('T')[0]
-            });
-
-            showToast('Cuenta creada exitosamente. ¡Bienvenido!');
-            const user = await db.usuarios.get(nuevoId);
-            iniciarSesionComo(user);
-        });
-
-        function iniciarSesionComo(user) {
-            usuarioActual = user;
-            localStorage.setItem('sesion_usuario_id', String(user.id));
-            document.getElementById('auth-screen').classList.add('hidden');
-            document.getElementById('app-shell').classList.remove('hidden');
-            document.getElementById('app-shell').classList.add('flex');
-            inicializarAppTrasLogin();
+            document.getElementById('bcv-rate-display').innerText = `Bs ${bcvRate.toFixed(2)}`;
         }
 
-        function cerrarSesion() {
-            if (!confirm('¿Deseas cerrar tu sesión?')) return;
-            localStorage.removeItem('sesion_usuario_id');
-            window.location.reload();
-        }
-
-        async function intentarRestaurarSesion() {
-            await asegurarAdminPorDefecto();
-            const idGuardado = localStorage.getItem('sesion_usuario_id');
-            if (idGuardado) {
-                const user = await db.usuarios.get(parseInt(idGuardado));
-                if (user) {
-                    iniciarSesionComo(user);
+        // Control de Sesión
+        async function checkSession() {
+            const session = localStorage.getItem('activeUserSession');
+            if (session) {
+                const user = JSON.parse(session);
+                const dbUser = await db.usuarios.get({ username: user.username });
+                if (dbUser) {
+                    currentUser = dbUser;
+                    showDashboard();
                     return;
                 }
             }
-            document.getElementById('auth-screen').classList.remove('hidden');
+            showAuth();
         }
 
-        // ============ 4. Manejador de Vistas (SPA) ============
-        function switchView(viewId) {
-            document.querySelectorAll('.app-view').forEach(v => v.classList.add('hidden'));
-            document.getElementById(`view-${viewId}`).classList.remove('hidden');
+        // Navegación Visual entre Pantallas
+        function showAuth() {
+            document.getElementById('auth-section').classList.remove('hidden');
+            document.getElementById('dashboard-section').classList.add('hidden');
+            document.getElementById('user-profile-nav').classList.add('hidden');
+        }
 
-            document.querySelectorAll('.nav-btn-mobile').forEach(btn => {
-                if (btn.getAttribute('data-view') === viewId) {
-                    btn.classList.add('active-tab');
-                } else {
-                    btn.classList.remove('active-tab');
-                }
-            });
-
-            document.querySelectorAll('.nav-btn-sidebar').forEach(btn => {
-                if (btn.getAttribute('data-view') === viewId) {
-                    btn.classList.add('bg-slate-800', 'text-white', 'border-l-4', 'border-brandBlue');
-                } else {
-                    btn.classList.remove('bg-slate-800', 'text-white', 'border-l-4', 'border-brandBlue');
-                }
-            });
-
-            if (viewId === 'inicio') {
-                actualizarPanelPrincipal(false);
-            } else if (viewId === 'deudas') {
-                renderizarDeudas();
-            } else if (viewId === 'clientes') {
-                renderizarClientes();
-            } else if (viewId === 'reportes') {
-                renderHistoryTable();
-            } else if (viewId === 'admin') {
-                renderizarAdmin();
-            } else if (viewId === 'config') {
-                document.getElementById('config-usuario-actual').textContent = `${usuarioActual.nombre} (@${usuarioActual.usuario})`;
+        function showDashboard() {
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('dashboard-section').classList.remove('hidden');
+            document.getElementById('user-profile-nav').classList.remove('hidden');
+            document.getElementById('nav-username').innerText = currentUser.username;
+            document.getElementById('nav-role').innerText = currentUser.role === 'admin' ? 'Administrador' : 'Gestor';
+            
+            if (currentUser.role === 'admin') {
+                document.getElementById('tab-admin').classList.remove('hidden');
+            } else {
+                document.getElementById('tab-admin').classList.add('hidden');
             }
+
+            switchTab('transacciones');
+            updateBalancesAndDashboards();
         }
 
-        // ============ 5. Sincronización Real con el BCV ============
-        async function sincronizarTasaBCV() {
-            try {
-                const res = await fetch("https://ve.dolarapi.com/v1/dolares/oficial");
-                if (!res.ok) throw new Error("Fallo de conexión.");
+        // --- 5. NAVEGACIÓN POR PESTAÑAS (SPA) ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.remove('border-indigo-500', 'text-indigo-400');
+                b.classList.add('border-transparent', 'text-slate-400');
+            });
 
-                const datos = await res.json();
+            document.getElementById(`panel-${tabId}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-${tabId}`);
+            activeBtn.classList.remove('border-transparent', 'text-slate-400');
+            activeBtn.classList.add('border-indigo-500', 'text-indigo-400');
+        }
+
+        // --- 6. EVENT LISTENERS ---
+        function setupEventListeners() {
+            // Cambio entre Inicio de Sesión y Registro
+            const authToggle = document.getElementById('toggle-auth-mode');
+            authToggle.addEventListener('click', () => {
+                const isLogin = document.getElementById('auth-title').innerText === 'Iniciar Sesión';
+                document.getElementById('auth-title').innerText = isLogin ? 'Crear una Cuenta' : 'Iniciar Sesión';
+                document.getElementById('auth-subtitle').innerText = isLogin ? 'Únete al sistema de control de caja' : 'Accede para gestionar tus finanzas';
+                authToggle.innerText = isLogin ? '¿Ya tienes cuenta? Inicia sesión aquí' : '¿No tienes cuenta? Regístrate aquí';
+            });
+
+            // Manejador del Formulario de Autenticación
+            document.getElementById('auth-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const username = document.getElementById('auth-username').value.trim();
+                const rawPassword = document.getElementById('auth-password').value;
+                const hashedPassword = await hashPassword(rawPassword);
+                const isLogin = document.getElementById('auth-title').innerText === 'Iniciar Sesión';
+
+                if (isLogin) {
+                    const matchedUser = await db.usuarios.get({ username: username, password: hashedPassword });
+                    if (matchedUser) {
+                        currentUser = matchedUser;
+                        localStorage.setItem('activeUserSession', JSON.stringify({ username }));
+                        document.getElementById('auth-form').reset();
+                        showDashboard();
+                    } else {
+                        alert("Las credenciales introducidas no coinciden o no existen.");
+                    }
+                } else {
+                    const existing = await db.usuarios.get({ username });
+                    if (existing) {
+                        alert("El nombre de usuario ya se encuentra registrado.");
+                        return;
+                    }
+                    const newUser = { username, password: hashedPassword, role: 'user' };
+                    await db.usuarios.add(newUser);
+                    currentUser = await db.usuarios.get({ username });
+                    localStorage.setItem('activeUserSession', JSON.stringify({ username }));
+                    document.getElementById('auth-form').reset();
+                    showDashboard();
+                }
+            });
+
+            // Cierre de sesión
+            document.getElementById('btn-logout').addEventListener('click', () => {
+                currentUser = null;
+                localStorage.removeItem('activeUserSession');
+                showAuth();
+            });
+
+            // Conmutador de Tipo de Transacción
+            document.getElementById('tx-type-ingreso').addEventListener('click', () => setTxType('ingreso'));
+            document.getElementById('tx-type-egreso').addEventListener('click', () => setTxType('egreso'));
+
+            // Envío de Transacción manual
+            document.getElementById('tx-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const monto = parseFloat(document.getElementById('tx-monto').value);
+                const moneda = document.getElementById('tx-moneda').value;
+                const descripcion = document.getElementById('tx-descripcion').value.trim();
+
+                await db.transacciones.add({
+                    fecha: Date.now(),
+                    tipo: currentTxType,
+                    monto,
+                    moneda,
+                    descripcion,
+                    userId: currentUser.id
+                });
+
+                document.getElementById('tx-form').reset();
+                setTxType('ingreso');
+                await updateBalancesAndDashboards();
+            });
+
+            // Conmutador de Tipo de Deuda / Cobro
+            document.getElementById('debt-type-cobrar').addEventListener('click', () => setDebtType('cobrar'));
+            document.getElementById('debt-type-pagar').addEventListener('click', () => setDebtType('pagar'));
+
+            // Envío de Deuda manual
+            document.getElementById('debt-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const persona = document.getElementById('debt-person').value.trim();
+                const concepto = document.getElementById('debt-concept').value.trim();
+                const monto = parseFloat(document.getElementById('debt-amount').value);
+
+                await db.deudas.add({
+                    tipo: currentDebtType,
+                    persona,
+                    concepto,
+                    montoTotal: monto,
+                    montoPendiente: monto,
+                    status: 'pendiente',
+                    userId: currentUser.id
+                });
+
+                document.getElementById('debt-form').reset();
+                setDebtType('cobrar');
+                await updateBalancesAndDashboards();
+            });
+
+            // Envío de Financiamiento (Cashea)
+            document.getElementById('purchase-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const item = document.getElementById('pur-item').value.trim();
+                const total = parseFloat(document.getElementById('pur-total').value);
+                const downpayment = parseFloat(document.getElementById('pur-downpayment').value);
+                const totalInstallments = parseInt(document.getElementById('pur-installments').value);
+
+                if (downpayment >= total) {
+                    alert("La cuota inicial no puede ser igual o mayor al costo total del artículo.");
+                    return;
+                }
+
+                // Cálculo de las cuotas
+                const remaining = total - downpayment;
+                const installmentAmount = Math.round((remaining / totalInstallments) * 100) / 100;
                 
-                if (datos && datos.promedio) {
-                    const tasaOficial = parseFloat(datos.promedio);
-                    await db.config.put({ clave: 'tasa_cambio', valor: tasaOficial });
-                    await db.config.put({ clave: 'ultima_sync_bcv_fecha', valor: new Date().toISOString().split('T')[0] });
-                    await db.config.put({ clave: 'ultima_sync_bcv_hora', valor: new Date().toLocaleTimeString('es-VE') });
-                    TASA_USDT_A_VES = tasaOficial;
-
-                    // Actualizar indicadores visuales globales permanentes
-                    document.getElementById('global-rate-indicator-desktop').textContent = tasaOficial.toFixed(2);
-                    document.getElementById('global-rate-indicator-mobile').textContent = tasaOficial.toFixed(2);
-
-                    const inputTasa = document.getElementById('config-tasa');
-                    if (inputTasa) inputTasa.value = tasaOficial;
-
-                    const statusBCV = document.getElementById('config-bcv-status');
-                    if (statusBCV) statusBCV.innerHTML = `<span class="material-icons-round text-xs">sync</span> Sincronizado con BCV: Bs. ${tasaOficial.toFixed(2)}`;
-
-                    showToast(`Tasa BCV sincronizada: Bs. ${tasaOficial.toFixed(2)}`, 'info');
-                    return tasaOficial;
-                }
-            } catch (error) {
-                console.warn("Fallo al obtener tasa del BCV en vivo (Modo Offline).");
-            }
-            return null;
-        }
-
-        async function verificarActualizacionAutomatica6PM() {
-            const ahora = new Date();
-            const hoyStr = ahora.toISOString().split('T')[0];
-            const horaActual = ahora.getHours();
-
-            const cfg = await db.config.get('ultima_sync_bcv_fecha');
-            const ultimaFechaSync = cfg ? cfg.valor : null;
-
-            if (horaActual >= 18 && ultimaFechaSync !== hoyStr) {
-                const nuevaTasa = await sincronizarTasaBCV();
-                if (nuevaTasa) {
-                    actualizarPanelPrincipal(false);
-                }
-            }
-        }
-        setInterval(verificarActualizacionAutomatica6PM, 60000);
-
-        // ============ 6. Carga y Sincronización de Datos ============
-        async function actualizarPanelPrincipal(intentarSyncBCV = false) {
-            const tasaCfg = await db.config.get('tasa_cambio');
-            if (tasaCfg) {
-                TASA_USDT_A_VES = parseFloat(tasaCfg.valor);
-                document.getElementById('config-tasa').value = TASA_USDT_A_VES;
-                document.getElementById('global-rate-indicator-desktop').textContent = TASA_USDT_A_VES.toFixed(2);
-                document.getElementById('global-rate-indicator-mobile').textContent = TASA_USDT_A_VES.toFixed(2);
-            }
-
-            if (intentarSyncBCV) {
-                const nuevaTasa = await sincronizarTasaBCV();
-                if (nuevaTasa) TASA_USDT_A_VES = nuevaTasa;
-                verificarActualizacionAutomatica6PM();
-            }
-
-            const ingresos = await db.ingresos.where('usuarioId').equals(usuarioActual.id).toArray();
-            const gastos = await db.gastos.where('usuarioId').equals(usuarioActual.id).toArray();
-            const deudas = await db.deudas.where('usuarioId').equals(usuarioActual.id).toArray();
-
-            const hoy = new Date().toISOString().split('T')[0];
-
-            let totalVES = 0;
-            let totalUSDT = 0;
-            let ingresosHoyVES = 0;
-            let ingresosHoyUSDT = 0;
-            let gastosHoyVES = 0;
-            let gastosHoyUSDT = 0;
-
-            ingresos.forEach(i => {
-                const monto = parseFloat(i.monto);
-                if (i.moneda === 'VES') {
-                    totalVES += monto;
-                    if (i.fecha === hoy) ingresosHoyVES += monto;
-                } else {
-                    totalUSDT += monto;
-                    if (i.fecha === hoy) ingresosHoyUSDT += monto;
-                }
-            });
-
-            gastos.forEach(g => {
-                const monto = parseFloat(g.monto);
-                if (g.moneda === 'VES') {
-                    totalVES -= monto;
-                    if (g.fecha === hoy) gastosHoyVES += monto;
-                } else {
-                    totalUSDT -= monto;
-                    if (g.fecha === hoy) gastosHoyUSDT += monto;
-                }
-            });
-
-            const balanceTotalUSD = totalUSDT + (totalVES / TASA_USDT_A_VES);
-
-            document.getElementById('total-balance-usd').textContent = `$${balanceTotalUSD.toFixed(2)}`;
-            document.getElementById('balance-ves').textContent = `${totalVES.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} VES`;
-            document.getElementById('balance-usdt').textContent = `${totalUSDT.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`;
-
-            document.getElementById('today-income').textContent = `${ingresosHoyVES.toFixed(0)} Bs / ${ingresosHoyUSDT.toFixed(0)} $`;
-            document.getElementById('today-expense').textContent = `${gastosHoyVES.toFixed(0)} Bs / ${gastosHoyUSDT.toFixed(0)} $`;
-
-            procesarAsistenteInteligente(balanceTotalUSD, deudas);
-            renderizarMovimientosRecientes(ingresos, gastos);
-        }
-
-        // ============ 7. Asistente Financiero ============
-        function procesarAsistenteInteligente(saldoEquivUSD, deudas) {
-            const container = document.getElementById('ai-suggestion');
-            const deudasPendientes = deudas.filter(d => d.estado === 'Pendiente');
-
-            if (deudasPendientes.length === 0) {
-                container.innerHTML = `🌟 <strong>¡Fantástico!</strong> No posees deudas vigentes registradas. Tienes plena liquidez para enfocar tus ingresos del día en reinversión o crecimiento.`;
-                return;
-            }
-
-            const deudasUrgentes = [...deudasPendientes].sort((a, b) => new Date(a.vencimiento) - new Date(b.vencimiento));
-            const masUrgente = deudasUrgentes[0];
-
-            let deudasTotalesUSD = 0;
-            deudasPendientes.forEach(d => {
-                const pendiente = d.montoPendiente ?? d.monto;
-                deudasTotalesUSD += d.moneda === 'VES' ? (pendiente / TASA_USDT_A_VES) : pendiente;
-            });
-
-            let html = `Tienes un total de deudas vigentes por un equivalente de <strong>$${deudasTotalesUSD.toFixed(2)} USD</strong>.<br><br>`;
-
-            if (saldoEquivUSD <= 0) {
-                html += `⚠️ Saldo en caja insuficiente. Recomendamos priorizar abonos o el pago de tu próxima cuota con <strong>${masUrgente.acreedor}</strong> (Vence: ${masUrgente.vencimiento}).`;
-            } else {
-                const fondoEmergencia = saldoEquivUSD * 0.20;
-                const fondoPago = saldoEquivUSD * 0.50;
-                const fondoOperaciones = saldoEquivUSD * 0.30;
-
-                html += `💸 <strong>Planificación sugerida:</strong>
-                <ul class="list-disc pl-5 mt-2 space-y-1">
-                    <li>Fondo de reserva (20%): <strong>$${fondoEmergencia.toFixed(2)}</strong></li>
-                    <li>Pago de compromisos y cuotas (50%): <strong>$${fondoPago.toFixed(2)}</strong> para abonar a <strong>${masUrgente.acreedor}</strong></li>
-                    <li>Operaciones comunes (30%): <strong>$${fondoOperaciones.toFixed(2)}</strong></li>
-                </ul>`;
-            }
-
-            container.innerHTML = html;
-        }
-
-        // ============ 8. Registro de Ingresos ============
-        document.getElementById('form-ingreso').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const ing = {
-                usuarioId: usuarioActual.id,
-                monto: parseFloat(document.getElementById('ingreso-monto').value),
-                moneda: document.getElementById('ingreso-moneda').value,
-                concepto: document.getElementById('ingreso-concepto').value,
-                cliente: document.getElementById('ingreso-cliente').value || 'Particular',
-                metodoPago: document.getElementById('ingreso-metodo').value,
-                fecha: document.getElementById('ingreso-fecha').value
-            };
-
-            await db.ingresos.add(ing);
-            showToast('¡Ingreso guardado exitosamente!');
-            document.getElementById('form-ingreso').reset();
-            establecerFechaPorDefecto();
-            switchView('inicio');
-        });
-
-        // ============ 9. Registro de Gastos ============
-        document.getElementById('form-gasto').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const gas = {
-                usuarioId: usuarioActual.id,
-                monto: parseFloat(document.getElementById('gasto-monto').value),
-                moneda: document.getElementById('gasto-moneda').value,
-                categoria: document.getElementById('gasto-categoria').value,
-                descripcion: document.getElementById('gasto-descripcion').value,
-                fecha: document.getElementById('gasto-fecha').value
-            };
-
-            await db.gastos.add(gas);
-            showToast('¡Gasto guardado con éxito!');
-            document.getElementById('form-gasto').reset();
-            establecerFechaPorDefecto();
-            switchView('inicio');
-        });
-
-        // ============ 10. Lógica Especial Cashea y Cuotas Automáticas ============
-        function toggleCamposCashea() {
-            const checked = document.getElementById('deuda-es-cashea').checked;
-            const campos = document.getElementById('campos-cashea');
-            const lblFecha = document.getElementById('lbl-deuda-fecha');
-
-            campos.classList.toggle('hidden', !checked);
-            document.getElementById('deuda-inicial').required = checked;
-            document.getElementById('deuda-total-cuotas').required = checked;
-
-            // Cambiar dinámicamente la etiqueta según sea Cashea o Deuda normal
-            lblFecha.textContent = checked ? "Fecha de Compra" : "Fecha de Vencimiento";
-
-            autocalcularRestanteCashea();
-        }
-
-        function autocalcularRestanteCashea() {
-            const esCashea = document.getElementById('deuda-es-cashea').checked;
-            if (!esCashea) return;
-
-            const montoTotal = parseFloat(document.getElementById('deuda-monto').value || 0);
-            const pagoInicial = parseFloat(document.getElementById('deuda-inicial').value || 0);
-            const numCuotas = parseInt(document.getElementById('deuda-total-cuotas').value || 0);
-
-            const restante = montoTotal - pagoInicial;
-            const montoPorCuota = numCuotas > 0 && restante > 0 ? (restante / numCuotas) : 0;
-
-            document.getElementById('deuda-monto-cuota').value = montoPorCuota.toFixed(2);
-        }
-
-        // Función para sumar días a una fecha (Formato YYYY-MM-DD)
-        function sumarDias(fechaStr, dias) {
-            const date = new Date(fechaStr + 'T00:00:00');
-            date.setDate(date.getDate() + dias);
-            return date.toISOString().split('T')[0];
-        }
-
-        document.getElementById('form-deuda').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const esCashea = document.getElementById('deuda-es-cashea').checked;
-            const montoBase = parseFloat(document.getElementById('deuda-monto').value);
-            const interes = parseFloat(document.getElementById('deuda-interes').value || 0);
-            const interesCalculado = montoBase * (interes / 100);
-            const montoConInteres = montoBase + interesCalculado;
-            const fechaIngresada = document.getElementById('deuda-vencimiento').value;
-
-            let deu = {
-                usuarioId: usuarioActual.id,
-                acreedor: document.getElementById('deuda-acreedor').value,
-                monto: montoConInteres,
-                moneda: document.getElementById('deuda-moneda').value,
-                vencimiento: fechaIngresada, // Para Cashea representa la fecha de compra original
-                interes: interes,
-                estado: 'Pendiente',
-                esCashea: esCashea
-            };
-
-            if (esCashea) {
-                const inicial = parseFloat(document.getElementById('deuda-inicial').value || 0);
-                const totalCuotas = parseInt(document.getElementById('deuda-total-cuotas').value || 0);
-                const valorCuota = parseFloat(document.getElementById('deuda-monto-cuota').value || 0);
-
-                const restantePendiente = montoConInteres - inicial;
-
-                deu.inicial = inicial;
-                deu.montoPendiente = restantePendiente;
-                deu.totalCuotas = totalCuotas;
-                deu.montoCuota = valorCuota;
-                deu.cuotas = [];
-
-                // Generación de cuotas automáticas espaciadas secuencialmente de 14 en 14 días
-                for (let i = 1; i <= totalCuotas; i++) {
-                    const diasASumar = i * 14;
-                    const fechaVencimientoCuota = sumarDias(fechaIngresada, diasASumar);
-
-                    deu.cuotas.push({
-                        numero: i,
-                        monto: valorCuota,
-                        montoPendiente: valorCuota, // Permitimos control de abonos parciales por cuota
-                        estado: 'Pendiente',
-                        vencimiento: fechaVencimientoCuota,
-                        fechaPago: null
+                const installments = [];
+                const now = Date.now();
+                for (let i = 1; i <= totalInstallments; i++) {
+                    installments.push({
+                        installmentNumber: i,
+                        dueDate: now + (i * 14 * 24 * 60 * 60 * 1000), // Cada 14 días
+                        amount: installmentAmount,
+                        status: 'pendiente',
+                        paidAmount: 0
                     });
                 }
 
-                // Ajustamos el vencimiento final de la deuda general como la fecha de la última cuota
-                if (totalCuotas > 0) {
-                    deu.vencimiento = deu.cuotas[totalCuotas - 1].vencimiento;
-                }
+                // Guardar la compra
+                await db.compras.add({
+                    item,
+                    total,
+                    downpayment,
+                    totalInstallments,
+                    installments,
+                    status: 'pendiente',
+                    userId: currentUser.id
+                });
 
-                // Registrar egreso automático por pago inicial en Gastos
-                if (inicial > 0) {
-                    await db.gastos.add({
-                        usuarioId: usuarioActual.id,
-                        monto: inicial,
-                        moneda: deu.moneda,
-                        categoria: 'Otros',
-                        descripcion: `Pago Inicial (Cashea) - Compra en ${deu.acreedor}`,
-                        fecha: new Date().toISOString().split('T')[0]
-                    });
+                // Registrar de forma automática la inicial como un egreso de Caja USD
+                await db.transacciones.add({
+                    fecha: now,
+                    tipo: 'egreso',
+                    monto: downpayment,
+                    moneda: 'USD',
+                    descripcion: `Inicial financiamiento: ${item}`,
+                    userId: currentUser.id
+                });
+
+                document.getElementById('purchase-form').reset();
+                await updateBalancesAndDashboards();
+            });
+
+            // Lógica de cálculo en vivo de conversión de moneda en el Modal
+            const modalPayAmountInput = document.getElementById('modal-pay-amount');
+            const modalPayMethodSelect = document.getElementById('modal-pay-method');
+            const conversionNotice = document.getElementById('modal-conversion-notice');
+
+            function updateModalConversionNotice() {
+                const method = modalPayMethodSelect.value;
+                const amount = parseFloat(modalPayAmountInput.value) || 0;
+                if (method === 'VES') {
+                    const equivalent = amount * bcvRate;
+                    conversionNotice.innerText = `Equivalente en Bolívares a retirar de Caja: Bs ${equivalent.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})} (Tasa BCV: ${bcvRate})`;
+                    conversionNotice.classList.remove('hidden');
+                } else {
+                    conversionNotice.classList.add('hidden');
                 }
-            } else {
-                deu.montoPendiente = montoConInteres;
             }
 
-            await db.deudas.add(deu);
-            showToast(esCashea ? 'Compra Cashea con plan de cuotas quincenales (14 días) creado.' : 'Deuda agregada correctamente');
-            document.getElementById('form-deuda').reset();
-            document.getElementById('campos-cashea').classList.add('hidden');
-            document.getElementById('deuda-es-cashea').checked = false;
-            document.getElementById('lbl-deuda-fecha').textContent = "Fecha de Vencimiento";
-            establecerFechaPorDefecto();
-            renderizarDeudas();
-        });
+            modalPayAmountInput.addEventListener('input', updateModalConversionNotice);
+            modalPayMethodSelect.addEventListener('change', updateModalConversionNotice);
 
-        async function renderizarDeudas() {
-            const container = document.getElementById('debts-list');
-            container.innerHTML = '';
-            const deudas = await db.deudas.where('usuarioId').equals(usuarioActual.id).toArray();
+            // Guardar Pago de Modal
+            document.getElementById('modal-payment-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const targetType = document.getElementById('modal-target-type').value;
+                const targetId = parseInt(document.getElementById('modal-target-id').value);
+                const instIdx = parseInt(document.getElementById('modal-installment-idx').value);
+                const payAmount = parseFloat(modalPayAmountInput.value);
+                const payMethod = modalPayMethodSelect.value;
 
-            if (deudas.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Sin pasivos registrados por los momentos.</p>`;
-                return;
-            }
+                if (targetType === 'cashea') {
+                    const purchase = await db.compras.get(targetId);
+                    if (purchase) {
+                        const inst = purchase.installments[instIdx];
+                        const remaining = inst.amount - inst.paidAmount;
+                        
+                        if (payAmount > remaining) {
+                            alert("No puedes abonar un monto superior al saldo restante de esta cuota.");
+                            return;
+                        }
 
-            deudas.forEach(d => {
-                const div = document.createElement('div');
-                div.className = 'flex flex-col gap-2 bg-slate-900/60 border border-darkBorder p-3 rounded-xl';
+                        // Actualizar la cuota específica
+                        inst.paidAmount += payAmount;
+                        if (inst.paidAmount >= inst.amount) {
+                            inst.status = 'pagado';
+                        }
+                        
+                        // Validar estado global de la compra
+                        const allPaid = purchase.installments.every(i => i.status === 'pagado');
+                        purchase.status = allPaid ? 'pagado' : 'pendiente';
+                        
+                        await db.compras.put(purchase);
 
-                const esPendiente = d.estado === 'Pendiente';
-                const pendiente = d.montoPendiente ?? d.monto;
-                const pagadoPorc = d.monto > 0 ? Math.min(100, Math.round(((d.monto - pendiente) / d.monto) * 100)) : 100;
+                        // Registrar transacción de egreso según el método de pago seleccionado
+                        await db.transacciones.add({
+                            fecha: Date.now(),
+                            tipo: 'egreso',
+                            monto: payMethod === 'VES' ? (payAmount * bcvRate) : payAmount,
+                            moneda: payMethod,
+                            descripcion: `Abono Cuota N°${inst.installmentNumber} de: ${purchase.item}`,
+                            userId: currentUser.id
+                        });
+                    }
+                } else if (targetType === 'deuda') {
+                    const debt = await db.deudas.get(targetId);
+                    if (debt) {
+                        if (payAmount > debt.montoPendiente) {
+                            alert("No puedes abonar más del saldo restante acumulado.");
+                            return;
+                        }
 
-                let badgeCashea = '';
-                let detallesVencimiento = `Vencimiento: ${d.vencimiento}`;
+                        debt.montoPendiente -= payAmount;
+                        if (debt.montoPendiente <= 0) {
+                            debt.status = 'pagado';
+                        }
+                        await db.deudas.put(debt);
 
-                if (d.esCashea) {
-                    const cuotasPagas = d.cuotas ? d.cuotas.filter(c => c.estado === 'Pagada').length : 0;
-                    badgeCashea = `<span class="text-[9px] bg-purple-500/20 text-purple-400 font-bold px-2 py-0.5 rounded ml-2">CASHEA · Cuotas ${cuotasPagas}/${d.totalCuotas || '-'}</span>`;
-                    
-                    // Encontrar la próxima cuota pendiente para mostrar su vencimiento prioritario
-                    const proximaCuota = d.cuotas.find(c => c.estado === 'Pendiente');
-                    if (proximaCuota) {
-                        detallesVencimiento = `Próxima Cuota (#${proximaCuota.numero}) vence: ${proximaCuota.vencimiento}`;
+                        // Determinar tipo de flujo de caja según el tipo de la cuenta
+                        const txType = debt.tipo === 'cobrar' ? 'ingreso' : 'egreso';
+                        const descPrefix = debt.tipo === 'cobrar' ? 'Cobro recibido' : 'Pago realizado';
+
+                        await db.transacciones.add({
+                            fecha: Date.now(),
+                            tipo: txType,
+                            monto: payMethod === 'VES' ? (payAmount * bcvRate) : payAmount,
+                            moneda: payMethod,
+                            descripcion: `${descPrefix}: ${debt.concepto} (${debt.persona})`,
+                            userId: currentUser.id
+                        });
                     }
                 }
 
-                div.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <h4 class="font-bold text-sm flex items-center ${esPendiente ? 'text-white' : 'text-slate-500 line-through'}">
-                                ${d.acreedor} ${badgeCashea}
-                            </h4>
-                            <span class="text-xs text-slate-400 block">Restante por pagar: ${pendiente.toFixed(2)} ${d.moneda} (Total original: ${d.monto.toFixed(2)})</span>
-                            <span class="text-[10px] text-slate-500 block">${detallesVencimiento}</span>
-                        </div>
-                        <div class="flex gap-2">
-                            ${esPendiente ?
-                                `<button onclick="gestionarPagoDeuda(${d.id})" class="px-3 py-1 bg-brandGreen/20 text-brandGreen hover:bg-brandGreen/30 text-xs font-bold rounded-lg transition">Pagar / Abonar</button>` :
-                                `<span class="text-[10px] bg-slate-800 text-slate-400 font-bold px-2 py-1 rounded">Saldada</span>`
-                            }
-                        </div>
-                    </div>
-                    ${esPendiente ? `
-                    <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden mt-1">
-                        <div class="h-full bg-brandGreen" style="width:${pagadoPorc}%"></div>
-                    </div>` : ''}
-                `;
-                container.appendChild(div);
+                closePaymentModal();
+                await updateBalancesAndDashboards();
+            });
+
+            // Filtro de historial transaccional
+            document.getElementById('filter-tx-type').addEventListener('change', async () => {
+                await renderTransacciones();
             });
         }
 
-        async function gestionarPagoDeuda(id) {
-            const deuda = await db.deudas.get(id);
-            if (!deuda || deuda.estado === 'Pagada') return;
+        // --- 7. CONTROLADORES DE INTERFAZ DE BOTONES ---
+        function setTxType(type) {
+            currentTxType = type;
+            const btnIngreso = document.getElementById('tx-type-ingreso');
+            const btnEgreso = document.getElementById('tx-type-egreso');
 
-            if (deuda.esCashea) {
-                abrirModalCuotas(deuda);
+            if (type === 'ingreso') {
+                btnIngreso.className = "tx-type-btn py-2.5 rounded-xl font-bold text-sm bg-indigo-600 text-white border-2 border-indigo-500 transition";
+                btnEgreso.className = "tx-type-btn py-2.5 rounded-xl font-bold text-sm bg-slate-900 text-slate-400 border border-slate-700 hover:border-slate-600 transition";
             } else {
-                const pendienteActual = deuda.montoPendiente ?? deuda.monto;
-                const entrada = prompt(`Abonar a deuda con ${deuda.acreedor}\nPendiente actual: ${pendienteActual.toFixed(2)} ${deuda.moneda}\n\nIngresa el monto a pagar:`, pendienteActual.toFixed(2));
-                if (entrada === null) return;
+                btnIngreso.className = "tx-type-btn py-2.5 rounded-xl font-bold text-sm bg-slate-900 text-slate-400 border border-slate-700 hover:border-slate-600 transition";
+                btnEgreso.className = "tx-type-btn py-2.5 rounded-xl font-bold text-sm bg-indigo-600 text-white border-2 border-indigo-500 transition";
+            }
+        }
 
-                const monto = parseFloat(entrada);
-                if (isNaN(monto) || monto <= 0) {
-                    showToast('Monto ingresado no válido', 'error');
-                    return;
+        function setDebtType(type) {
+            currentDebtType = type;
+            const btnCobrar = document.getElementById('debt-type-cobrar');
+            const btnPagar = document.getElementById('debt-type-pagar');
+
+            if (type === 'cobrar') {
+                btnCobrar.className = "debt-type-btn py-2.5 rounded-xl font-bold text-sm bg-indigo-600 text-white border-2 border-indigo-500 transition";
+                btnPagar.className = "debt-type-btn py-2.5 rounded-xl font-bold text-sm bg-slate-900 text-slate-400 border border-slate-700 hover:border-slate-600 transition";
+            } else {
+                btnCobrar.className = "debt-type-btn py-2.5 rounded-xl font-bold text-sm bg-slate-900 text-slate-400 border border-slate-700 hover:border-slate-600 transition";
+                btnPagar.className = "debt-type-btn py-2.5 rounded-xl font-bold text-sm bg-indigo-600 text-white border-2 border-indigo-500 transition";
+            }
+        }
+
+        // --- 8. RENDERS Y CÁLCULOS FINANCIEROS EN VIVO ---
+        async function updateBalancesAndDashboards() {
+            if (!currentUser) return;
+
+            // Obtener todas las transacciones vinculadas al usuario activo
+            const txs = await db.transacciones.where('userId').equals(currentUser.id).toArray();
+            
+            let usdBalance = 0;
+            let vesBalance = 0;
+
+            txs.forEach(t => {
+                const multiplier = t.tipo === 'ingreso' ? 1 : -1;
+                if (t.moneda === 'USD') {
+                    usdBalance += (t.monto * multiplier);
+                } else if (t.moneda === 'VES') {
+                    vesBalance += (t.monto * multiplier);
                 }
-
-                await registrarAbonoDeudaNormal(id, monto);
-            }
-        }
-
-        async function registrarAbonoDeudaNormal(id, monto) {
-            const deuda = await db.deudas.get(id);
-            const pendienteActual = deuda.montoPendiente ?? deuda.monto;
-            const abonoEfectivo = Math.min(monto, pendienteActual);
-            const nuevoPendiente = pendienteActual - abonoEfectivo;
-            const nuevoEstado = nuevoPendiente <= 0.01 ? 'Pagada' : 'Pendiente';
-
-            await db.gastos.add({
-                usuarioId: usuarioActual.id,
-                monto: abonoEfectivo,
-                moneda: deuda.moneda,
-                categoria: 'Servicios',
-                descripcion: `Abono a compromiso: ${deuda.acreedor}`,
-                fecha: new Date().toISOString().split('T')[0]
             });
 
-            await db.deudas.update(id, {
-                montoPendiente: nuevoPendiente,
-                estado: nuevoEstado
+            // Actualizar interfaz principal de balance
+            document.getElementById('balance-usd').innerText = `$${usdBalance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('balance-ves').innerText = `Bs ${vesBalance.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+            // Calcular cobros pendientes de Cuentas por Cobrar
+            const receivables = await db.deudas.where({ userId: currentUser.id, tipo: 'cobrar', status: 'pendiente' }).toArray();
+            const totalReceivables = receivables.reduce((sum, item) => sum + item.montoPendiente, 0);
+            document.getElementById('pending-receivables').innerText = `$${totalReceivables.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+            // Calcular deudas pendientes (Cashea + Cuentas por pagar)
+            const payables = await db.deudas.where({ userId: currentUser.id, tipo: 'pagar', status: 'pendiente' }).toArray();
+            const totalPayables = payables.reduce((sum, item) => sum + item.montoPendiente, 0);
+
+            const purchases = await db.compras.where({ userId: currentUser.id, status: 'pendiente' }).toArray();
+            let totalCasheaPending = 0;
+            purchases.forEach(p => {
+                p.installments.forEach(inst => {
+                    if (inst.status === 'pendiente') {
+                        totalCasheaPending += (inst.amount - inst.paidAmount);
+                    }
+                });
             });
 
-            showToast(nuevoEstado === 'Pagada' ? 'Deuda saldada por completo 🎉' : `Abono registrado: ${abonoEfectivo.toFixed(2)} ${deuda.moneda}`);
-            renderizarDeudas();
-            actualizarPanelPrincipal(false);
+            const totalDebtsGlobal = totalPayables + totalCasheaPending;
+            document.getElementById('pending-payables').innerText = `$${totalDebtsGlobal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+            // Renderizar vistas asociadas
+            await renderTransacciones();
+            await renderCompras();
+            await renderDeudas();
+            await renderAdminPanel();
+            lucide.createIcons();
         }
 
-        // ============ 11. Modal y Lógica de Abonos de Cuotas Cashea ============
-        function abrirModalCuotas(deuda) {
-            deudaEnEdicionModal = deuda;
-            document.getElementById('modal-deuda-detalles').innerHTML = `Deuda de <strong>${deuda.acreedor}</strong>. Cuotas de <strong>${deuda.montoCuota.toFixed(2)} ${deuda.moneda}</strong> cada una.`;
-            
-            cancelarAbonoCuota(); // Resetear formulario de abono interno
-            const lista = document.getElementById('modal-cuotas-lista');
-            lista.innerHTML = '';
+        async function renderTransacciones() {
+            const filter = document.getElementById('filter-tx-type').value;
+            let txs = await db.transacciones.where('userId').equals(currentUser.id).reverse().toArray();
 
-            deuda.cuotas.forEach((cuota) => {
-                const div = document.createElement('div');
-                div.className = "flex flex-col gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800";
-                
-                const esPaga = cuota.estado === 'Pagada';
-                // Compatibilidad: si la cuota no tiene la propiedad montoPendiente inicializada, se la asignamos
-                const pendienteCuota = cuota.montoPendiente !== undefined ? cuota.montoPendiente : (esPaga ? 0 : cuota.monto);
-
-                div.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <div class="flex flex-col">
-                            <span class="text-xs font-bold text-slate-200">Cuota #${cuota.numero} (Vence: ${cuota.vencimiento})</span>
-                            <span class="text-[11px] text-slate-400">Restante: ${pendienteCuota.toFixed(2)} / ${cuota.monto.toFixed(2)} ${deuda.moneda}</span>
-                        </div>
-                        <div>
-                            ${esPaga ? 
-                                `<span class="text-[10px] bg-brandGreen/20 text-brandGreen px-3 py-1 rounded-lg font-bold">PAGADA</span>` : 
-                                `<button onclick="iniciarAbonoCuota(${cuota.numero}, ${pendienteCuota})" class="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold rounded-lg transition">Abonar</button>`
-                            }
-                        </div>
-                    </div>
-                `;
-                lista.appendChild(div);
-            });
-
-            document.getElementById('modal-cuotas').classList.remove('hidden');
-        }
-
-        function cerrarModalCuotas() {
-            document.getElementById('modal-cuotas').classList.add('hidden');
-            deudaEnEdicionModal = null;
-            cuotaSeleccionadaParaAbonar = null;
-        }
-
-        // Mostrar formulario para introducir abonos
-        function iniciarAbonoCuota(numCuota, montoPendiente) {
-            cuotaSeleccionadaParaAbonar = {
-                numero: numCuota,
-                montoMaximoUSD: deudaEnEdicionModal.moneda === 'USDT' ? montoPendiente : (montoPendiente / TASA_USDT_A_VES),
-                montoMaximoVES: deudaEnEdicionModal.moneda === 'VES' ? montoPendiente : (montoPendiente * TASA_USDT_A_VES),
-                montoOriginalPendiente: montoPendiente
-            };
-
-            document.getElementById('txt-num-cuota-abono').textContent = `#${numCuota}`;
-            const inputMonto = document.getElementById('abono-cuota-monto');
-            inputMonto.value = montoPendiente.toFixed(2); // Cargar el monto sugerido completo
-            
-            // Forzar que la moneda del selector sea por defecto la de la deuda
-            document.getElementById('abono-cuota-moneda').value = deudaEnEdicionModal.moneda;
-
-            document.getElementById('seccion-abonar-cuota').classList.remove('hidden');
-            calcularConversionAbono();
-        }
-
-        function cancelarAbonoCuota() {
-            document.getElementById('seccion-abonar-cuota').classList.add('hidden');
-            document.getElementById('abono-cuota-monto').value = '';
-            document.getElementById('txt-abono-conversion').textContent = '';
-            cuotaSeleccionadaParaAbonar = null;
-        }
-
-        // Calcula dinámicamente y muestra la conversión de divisas en tiempo real para el abono
-        function calcularConversionAbono() {
-            if (!cuotaSeleccionadaParaAbonar || !deudaEnEdicionModal) return;
-
-            const montoIngresado = parseFloat(document.getElementById('abono-cuota-monto').value || 0);
-            const monedaSeleccionada = document.getElementById('abono-cuota-moneda').value;
-            const txtConversion = document.getElementById('txt-abono-conversion');
-
-            if (montoIngresado <= 0) {
-                txtConversion.textContent = '';
-                return;
+            if (filter !== 'todos') {
+                txs = txs.filter(t => t.tipo === filter);
             }
 
-            let equivalente = 0;
-            if (monedaSeleccionada === 'USDT') {
-                equivalente = montoIngresado * TASA_USDT_A_VES;
-                txtConversion.textContent = `Equivale a: Bs. ${equivalente.toFixed(2)} (Tasa: ${TASA_USDT_A_VES.toFixed(2)})`;
-            } else {
-                equivalente = montoIngresado / TASA_USDT_A_VES;
-                txtConversion.textContent = `Equivale a: $${equivalente.toFixed(2)} USD (Tasa: ${TASA_USDT_A_VES.toFixed(2)})`;
-            }
-        }
-
-        async function confirmarAbonoCuota() {
-            if (!deudaEnEdicionModal || !cuotaSeleccionadaParaAbonar) return;
-
-            const inputMonto = parseFloat(document.getElementById('abono-cuota-monto').value || 0);
-            const monedaAbono = document.getElementById('abono-cuota-moneda').value;
-
-            if (isNaN(inputMonto) || inputMonto <= 0) {
-                showToast('Monto de abono no válido', 'error');
-                return;
-            }
-
-            // Normalizamos el abono a la moneda de la deuda
-            let abonoEnMonedaDeuda = inputMonto;
-            if (monedaAbono !== deudaEnEdicionModal.moneda) {
-                if (monedaAbono === 'VES') {
-                    // Abono de VES a deuda en USDT
-                    abonoEnMonedaDeuda = inputMonto / TASA_USDT_A_VES;
-                } else {
-                    // Abono de USDT a deuda en VES
-                    abonoEnMonedaDeuda = inputMonto * TASA_USDT_A_VES;
-                }
-            }
-
-            const d = await db.deudas.get(deudaEnEdicionModal.id);
-            const index = d.cuotas.findIndex(c => c.numero === cuotaSeleccionadaParaAbonar.numero);
-            if (index === -1) return;
-
-            const pendienteActualCuota = d.cuotas[index].montoPendiente !== undefined ? d.cuotas[index].montoPendiente : (d.cuotas[index].estado === 'Pagada' ? 0 : d.cuotas[index].monto);
-            
-            // Evitar abonar de más en la cuota
-            const abonoEfectivo = Math.min(abonoEnMonedaDeuda, pendienteActualCuota);
-            const nuevoPendienteCuota = pendienteActualCuota - abonoEfectivo;
-
-            // Actualizar datos de la cuota seleccionada
-            d.cuotas[index].montoPendiente = nuevoPendienteCuota;
-            if (nuevoPendienteCuota <= 0.01) {
-                d.cuotas[index].estado = 'Pagada';
-                d.cuotas[index].fechaPago = new Date().toISOString().split('T')[0];
-            }
-
-            // Actualizar saldo general de la deuda total
-            const nuevoMontoPendienteDeuda = Math.max(0, d.montoPendiente - abonoEfectivo);
-            const todasPagadas = d.cuotas.every(c => (c.montoPendiente !== undefined ? c.montoPendiente : (c.estado === 'Pagada' ? 0 : c.monto)) <= 0.01);
-
-            // Registrar la transacción de salida real en el libro de Gastos
-            await db.gastos.add({
-                usuarioId: usuarioActual.id,
-                monto: inputMonto, // Registramos la cantidad en la moneda real que pagó el usuario
-                moneda: monedaAbono,
-                categoria: 'Servicios',
-                descripcion: `Abono a Cuota #${cuotaSeleccionadaParaAbonar.numero} (Cashea) - ${d.acreedor}`,
-                fecha: new Date().toISOString().split('T')[0]
-            });
-
-            // Guardar cambios actualizados de la deuda en la base de datos local
-            await db.deudas.update(d.id, {
-                cuotas: d.cuotas,
-                montoPendiente: nuevoMontoPendienteDeuda,
-                estado: todasPagadas ? 'Pagada' : 'Pendiente'
-            });
-
-            showToast(`¡Abono de ${inputMonto.toFixed(2)} ${monedaAbono} aplicado con éxito!`);
-            
-            const deudaActualizada = await db.deudas.get(d.id);
-            renderizarDeudas();
-            actualizarPanelPrincipal(false);
-
-            if (deudaActualizada.estado === 'Pagada') {
-                showToast(`¡Felicidades! Has terminado de saldar toda la compra en ${d.acreedor} 🎉`);
-                cerrarModalCuotas();
-            } else {
-                abrirModalCuotas(deudaActualizada); // Actualizar modal
-            }
-        }
-
-        // ============ 12. Directorio de Clientes ============
-        document.getElementById('form-cliente').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const cli = {
-                usuarioId: usuarioActual.id,
-                nombre: document.getElementById('cliente-nombre').value,
-                telefono: document.getElementById('cliente-telefono').value
-            };
-
-            await db.clientes.add(cli);
-            showToast('Cliente guardado');
-            document.getElementById('form-cliente').reset();
-            renderizarClientes();
-            actualizarSelectClientes();
-        });
-
-        async function renderizarClientes() {
-            const container = document.getElementById('clients-grid');
-            container.innerHTML = '';
-            const clientes = await db.clientes.where('usuarioId').equals(usuarioActual.id).toArray();
-
-            if (clientes.length === 0) {
-                container.innerHTML = `<p class="col-span-2 text-xs text-slate-400 text-center py-4">No tienes clientes en tu directorio.</p>`;
-                return;
-            }
-
-            clientes.forEach(c => {
-                const div = document.createElement('div');
-                div.className = 'bg-slate-900/60 p-4 rounded-xl border border-darkBorder flex justify-between items-center';
-                div.innerHTML = `
-                    <div>
-                        <h4 class="font-bold text-sm text-teal-400">${c.nombre}</h4>
-                        <span class="text-xs text-slate-400">${c.telefono || 'Sin WhatsApp'}</span>
-                    </div>
-                    <a href="https://wa.me/${c.telefono ? c.telefono.replace(/\D/g,'') : ''}" target="_blank" class="w-8 h-8 rounded-full bg-brandGreen/20 flex items-center justify-center text-brandGreen hover:bg-brandGreen hover:text-slate-950 transition">
-                        <span class="material-icons-round text-sm">chat</span>
-                    </a>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        async function actualizarSelectClientes() {
-            const select = document.getElementById('ingreso-cliente');
-            select.innerHTML = '<option value="">Particular / Público general</option>';
-            const clientes = await db.clientes.where('usuarioId').equals(usuarioActual.id).toArray();
-            clientes.forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c.nombre;
-                opt.textContent = c.nombre;
-                select.appendChild(opt);
-            });
-        }
-
-        // ============ 13. Movimientos e Historial ============
-        function renderizarMovimientosRecientes(ingresos, gastos) {
-            const container = document.getElementById('recent-transactions-list');
-            container.innerHTML = '';
-
-            const combinados = [
-                ...ingresos.map(i => ({ ...i, tipo: 'ingreso' })),
-                ...gastos.map(g => ({ ...g, tipo: 'gasto' }))
-            ].sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, 5);
-
-            if (combinados.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-2">Registra tus primeros movimientos.</p>`;
-                return;
-            }
-
-            combinados.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'flex justify-between items-center text-xs pb-2 border-b border-slate-800/60 last:border-0 last:pb-0';
-
-                const esIngreso = item.tipo === 'ingreso';
-                const colorMonto = esIngreso ? 'text-brandGreen' : 'text-brandRed';
-                const prefijo = esIngreso ? '+' : '-';
-
-                div.innerHTML = `
-                    <div>
-                        <span class="font-bold text-slate-200">${item.concepto || item.descripcion}</span>
-                        <span class="text-[10px] text-slate-500 block">${item.fecha}</span>
-                    </div>
-                    <span class="font-extrabold ${colorMonto}">${prefijo}${item.monto.toFixed(2)} ${item.moneda}</span>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        async function renderHistoryTable() {
-            const ingresos = await db.ingresos.where('usuarioId').equals(usuarioActual.id).toArray();
-            const gastos = await db.gastos.where('usuarioId').equals(usuarioActual.id).toArray();
-
-            const filterType = document.getElementById('filter-type').value;
-            const filterCurrency = document.getElementById('filter-currency').value;
-
-            let combinados = [
-                ...ingresos.map(i => ({ ...i, tipo: 'ingreso', desc: i.concepto })),
-                ...gastos.map(g => ({ ...g, tipo: 'gasto', desc: g.descripcion }))
-            ].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-
-            if (filterType !== 'all') {
-                combinados = combinados.filter(item => item.tipo === filterType);
-            }
-            if (filterCurrency !== 'all') {
-                combinados = combinados.filter(item => item.moneda === filterCurrency);
-            }
-
-            const tbody = document.getElementById('history-table-body');
+            const tbody = document.getElementById('tx-table-body');
             tbody.innerHTML = '';
 
-            if (combinados.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-slate-400">Ningún movimiento coincide con los criterios.</td></tr>`;
+            if (txs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-slate-500">No se encontraron movimientos registrados en esta cuenta.</td></tr>`;
                 return;
             }
 
-            combinados.forEach(item => {
+            txs.forEach(t => {
+                const dateStr = new Date(t.fecha).toLocaleDateString('es-VE', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit'});
+                const formatSymbol = t.moneda === 'USD' ? '$' : 'Bs ';
+                const fontColor = t.tipo === 'ingreso' ? 'text-emerald-400' : 'text-rose-400';
+                const labelBg = t.tipo === 'ingreso' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400';
+
                 const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-800/30 transition";
-
-                const esIngreso = item.tipo === 'ingreso';
-                const labelColor = esIngreso ? 'bg-brandGreen/10 text-brandGreen' : 'bg-brandRed/10 text-brandRed';
-                const labelText = esIngreso ? 'ING' : 'EGR';
-                const montoColor = esIngreso ? 'text-brandGreen' : 'text-brandRed';
-                const prefijo = esIngreso ? '+' : '-';
-
+                tr.className = "hover:bg-slate-800/40 transition";
                 tr.innerHTML = `
-                    <td class="py-3 text-slate-400">${item.fecha}</td>
-                    <td class="py-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${labelColor}">${labelText}</span></td>
-                    <td class="py-3 font-semibold">${item.desc}</td>
-                    <td class="py-3 text-right font-bold ${montoColor}">${prefijo}${item.monto.toFixed(2)} ${item.moneda}</td>
+                    <td class="py-4.5 pr-2">
+                        <p class="font-medium text-slate-200">${t.descripcion}</p>
+                        <span class="text-xs text-slate-500">${dateStr}</span>
+                    </td>
+                    <td class="py-4.5">
+                        <span class="px-2.5 py-1 text-xs rounded-full font-bold uppercase tracking-wider ${labelBg}">${t.tipo}</span>
+                    </td>
+                    <td class="py-4.5 text-right font-bold ${fontColor}">
+                        ${t.tipo === 'ingreso' ? '+' : '-'}${formatSymbol}${t.monto.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </td>
+                    <td class="py-4.5 text-center">
+                        <button onclick="deleteTransaction(${t.id})" class="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 transition" title="Borrar registro">
+                            <i data-lucide="trash" class="w-4 h-4"></i>
+                        </button>
+                    </td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
-        async function clearAllTransactions() {
-            if (confirm("¿Estás seguro de que quieres vaciar todo tu historial de movimientos?")) {
-                await db.ingresos.where('usuarioId').equals(usuarioActual.id).delete();
-                await db.gastos.where('usuarioId').equals(usuarioActual.id).delete();
-                showToast("Historial vaciado con éxito");
-                renderHistoryTable();
-                actualizarPanelPrincipal(false);
-            }
-        }
+        async function renderCompras() {
+            const list = document.getElementById('purchases-list');
+            list.innerHTML = '';
 
-        async function factoryReset() {
-            if (confirm("Peligro: ¿Quieres borrar TODOS tus datos (ingresos, gastos, deudas y clientes)? Tu cuenta seguirá existiendo.")) {
-                await db.ingresos.where('usuarioId').equals(usuarioActual.id).delete();
-                await db.gastos.where('usuarioId').equals(usuarioActual.id).delete();
-                await db.deudas.where('usuarioId').equals(usuarioActual.id).delete();
-                await db.clientes.where('usuarioId').equals(usuarioActual.id).delete();
-                showToast("Tus datos han sido limpiados. Recargando...");
-                setTimeout(() => window.location.reload(), 1000);
-            }
-        }
+            const purchases = await db.compras.where('userId').equals(currentUser.id).reverse().toArray();
 
-        async function factoryResetGlobal() {
-            if (usuarioActual.rol !== 'admin') return;
-            if (confirm("PELIGRO EXTREMO: ¿Restablecer TODA la aplicación?")) {
-                await db.delete();
-                localStorage.clear();
-                showToast("La aplicación ha sido restablecida por completo. Recargando...");
-                setTimeout(() => window.location.reload(), 1200);
-            }
-        }
-
-        async function guardarTasaCambio() {
-            const tasaInput = parseFloat(document.getElementById('config-tasa').value);
-            if (isNaN(tasaInput) || tasaInput <= 0) {
-                showToast('Tasa de cambio no válida', 'error');
+            if (purchases.length === 0) {
+                list.innerHTML = `<div class="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center text-slate-500">Ningún plan de financiamiento registrado.</div>`;
                 return;
             }
-            await db.config.put({ clave: 'tasa_cambio', valor: tasaInput });
-            TASA_USDT_A_VES = tasaInput;
-            document.getElementById('global-rate-indicator-desktop').textContent = tasaInput.toFixed(2);
-            document.getElementById('global-rate-indicator-mobile').textContent = tasaInput.toFixed(2);
-            document.getElementById('config-bcv-status').innerHTML = `<span class="material-icons-round text-xs">edit</span> Tasa ajustada manualmente`;
-            showToast('Tasa de cambio guardada');
-            actualizarPanelPrincipal(false);
-        }
 
-        async function exportToJSON() {
-            const exportData = {
-                usuario: usuarioActual.usuario,
-                ingresos: await db.ingresos.where('usuarioId').equals(usuarioActual.id).toArray(),
-                gastos: await db.gastos.where('usuarioId').equals(usuarioActual.id).toArray(),
-                deudas: await db.deudas.where('usuarioId').equals(usuarioActual.id).toArray(),
-                clientes: await db.clientes.where('usuarioId').equals(usuarioActual.id).toArray()
-            };
+            purchases.forEach(p => {
+                const totalPaid = p.installments.reduce((sum, inst) => sum + inst.paidAmount, 0);
+                const remainingGlobal = (p.total - p.downpayment) - totalPaid;
+                const progressPct = Math.round((totalPaid / (p.total - p.downpayment)) * 100) || 0;
 
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", "gestiones_online_reporte.json");
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
-            showToast('JSON descargado exitosamente');
-        }
+                const card = document.createElement('div');
+                card.className = "bg-slate-900 border border-slate-700/60 rounded-xl p-5 space-y-4 shadow-sm";
+                
+                let installmentRows = '';
+                p.installments.forEach((inst, idx) => {
+                    const dueStr = new Date(inst.dueDate).toLocaleDateString('es-VE', {day: '2-digit', month: '2-digit'});
+                    const isPaid = inst.status === 'pagado';
+                    const remainingInst = inst.amount - inst.paidAmount;
 
-        // ============ 14. Panel de Administrador ============
-        async function renderizarAdmin() {
-            if (usuarioActual.rol !== 'admin') return;
+                    installmentRows += `
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg ${isPaid ? 'bg-slate-800/20 border border-emerald-950/40 text-slate-500' : 'bg-slate-800/60 border border-slate-700/40'} text-xs">
+                            <div class="space-y-1">
+                                <span class="font-bold text-slate-300">Cuota ${inst.installmentNumber} / ${p.totalInstallments}</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-slate-500">Vence: ${dueStr}</span>
+                                    <span class="px-1.5 py-0.5 rounded ${isPaid ? 'bg-emerald-950 text-emerald-400' : 'bg-amber-950 text-amber-400'} font-semibold uppercase tracking-wider text-[10px]">
+                                        ${isPaid ? 'Pagado' : 'Pendiente'}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-4 mt-2 sm:mt-0 justify-between sm:justify-end">
+                                <div class="text-right">
+                                    <p class="font-bold text-slate-200">$${inst.amount.toFixed(2)}</p>
+                                    ${!isPaid && inst.paidAmount > 0 ? `<p class="text-[10px] text-emerald-400 font-semibold">Abonado: $${inst.paidAmount.toFixed(2)}</p>` : ''}
+                                </div>
+                                ${!isPaid ? `
+                                    <button onclick="openPaymentModal('cashea', ${p.id}, ${idx}, ${remainingInst}, '${p.item} - Cuota ${inst.installmentNumber}')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg transition text-[11px]">
+                                        Abonar
+                                    </button>
+                                ` : `
+                                    <span class="text-emerald-400 p-1 bg-emerald-500/10 rounded-full"><i data-lucide="check" class="w-4 h-4"></i></span>
+                                `}
+                            </div>
+                        </div>
+                    `;
+                });
 
-            const usuarios = await db.usuarios.toArray();
-            const todosIngresos = await db.ingresos.toArray();
-            const todosGastos = await db.gastos.toArray();
-            const todasDeudas = await db.deudas.toArray();
-
-            document.getElementById('admin-total-usuarios').textContent = usuarios.length;
-            document.getElementById('admin-total-movimientos').textContent = todosIngresos.length + todosGastos.length;
-            document.getElementById('admin-total-deudas').textContent = todasDeudas.filter(d => d.estado === 'Pendiente').length;
-
-            const container = document.getElementById('admin-users-list');
-            container.innerHTML = '';
-
-            usuarios.forEach(u => {
-                const numIngresos = todosIngresos.filter(i => i.usuarioId === u.id).length;
-                const numGastos = todosGastos.filter(g => g.usuarioId === u.id).length;
-                const numDeudas = todasDeudas.filter(d => d.usuarioId === u.id && d.estado === 'Pendiente').length;
-
-                const div = document.createElement('div');
-                div.className = 'flex justify-between items-center bg-slate-900/60 border border-darkBorder p-3 rounded-xl';
-                div.innerHTML = `
-                    <div>
-                        <h4 class="font-bold text-sm text-white">${u.nombre} <span class="text-slate-500 font-normal">@${u.usuario}</span></h4>
-                        <span class="text-[10px] text-slate-400 block">${numIngresos} ingresos · ${numGastos} gastos · ${numDeudas} deudas activas</span>
+                card.innerHTML = `
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-800 pb-3">
+                        <div>
+                            <h5 class="font-bold text-slate-100 flex items-center gap-2">${p.item}</h5>
+                            <p class="text-xs text-slate-400">Total: $${p.total.toFixed(2)} | Inicial: $${p.downpayment.toFixed(2)}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-slate-400">Deuda Restante</p>
+                            <span class="font-bold text-amber-400">$${remainingGlobal.toFixed(2)}</span>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-[10px] font-bold px-2 py-1 rounded ${u.rol === 'admin' ? 'bg-purple-500/20 text-purple-400' : 'bg-slate-800 text-slate-400'}">${u.rol === 'admin' ? 'ADMIN' : 'USUARIO'}</span>
-                        ${u.id !== usuarioActual.id ? `
-                            <button onclick="cambiarRolUsuario(${u.id}, '${u.rol === 'admin' ? 'user' : 'admin'}')" class="text-slate-400 hover:text-brandBlue transition">
-                                <span class="material-icons-round text-base">swap_horiz</span>
-                            </button>
-                            <button onclick="eliminarUsuario(${u.id})" class="text-slate-400 hover:text-brandRed transition">
-                                <span class="material-icons-round text-base">delete</span>
-                            </button>
-                        ` : `<span class="text-[10px] text-slate-500 px-1">(Tú)</span>`}
+                    
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400">Progreso de Pago</span>
+                            <span class="font-semibold text-slate-200">${progressPct}%</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                            <div class="bg-indigo-500 h-full rounded-full transition-all duration-300" style="width: ${progressPct}%"></div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 mt-4">
+                        <p class="text-xs font-semibold tracking-wider uppercase text-slate-400">Cuotas Quincenales</p>
+                        ${installmentRows}
                     </div>
                 `;
-                container.appendChild(div);
+                list.appendChild(card);
             });
         }
 
-        async function cambiarRolUsuario(id, nuevoRol) {
-            await db.usuarios.update(id, { rol: nuevoRol });
-            showToast('Rol de usuario actualizado');
-            renderizarAdmin();
+        async function renderDeudas() {
+            const list = document.getElementById('debts-list');
+            list.innerHTML = '';
+
+            const debts = await db.deudas.where('userId').equals(currentUser.id).reverse().toArray();
+
+            if (debts.length === 0) {
+                list.innerHTML = `<div class="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center text-slate-500">No hay deudas activas registradas en esta cuenta.</div>`;
+                return;
+            }
+
+            debts.forEach(d => {
+                const isPaid = d.status === 'pagado';
+                const isPorCobrar = d.tipo === 'cobrar';
+                const typeLabel = isPorCobrar ? 'POR COBRAR (Cliente)' : 'POR PAGAR (Proveedor)';
+                const badgeClass = isPorCobrar ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20';
+
+                const card = document.createElement('div');
+                card.className = `bg-slate-900 border ${isPaid ? 'border-slate-800 opacity-60' : 'border-slate-700'} rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm`;
+
+                card.innerHTML = `
+                    <div class="space-y-1">
+                        <span class="px-2 py-0.5 text-[10px] rounded font-bold uppercase tracking-wider ${badgeClass}">
+                            ${typeLabel}
+                        </span>
+                        <h5 class="font-bold text-slate-100 text-base pt-1">${d.concepto}</h5>
+                        <p class="text-xs text-slate-400">Persona involucrada: <span class="text-slate-200 font-semibold">${d.persona}</span></p>
+                        <p class="text-xs text-slate-500">Monto total registrado: $${d.montoTotal.toFixed(2)}</p>
+                    </div>
+                    <div class="flex items-center gap-4 justify-between sm:justify-end border-t border-slate-800 sm:border-0 pt-3 sm:pt-0">
+                        <div class="text-left sm:text-right">
+                            <p class="text-xs text-slate-500">Saldo Pendiente</p>
+                            <p class="font-bold text-lg text-amber-400">$${d.montoPendiente.toFixed(2)}</p>
+                            ${isPaid ? `<span class="text-xs text-emerald-400 font-bold uppercase tracking-wider">Totalmente solventado</span>` : ''}
+                        </div>
+                        <div class="flex items-center gap-2">
+                            ${!isPaid ? `
+                                <button onclick="openPaymentModal('deuda', ${d.id}, 0, ${d.montoPendiente}, '${d.concepto} (${d.persona})')" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition">
+                                    Abonar
+                                </button>
+                            ` : ''}
+                            <button onclick="deleteDebt(${d.id})" class="p-2 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 rounded-lg transition" title="Eliminar registro">
+                                <i data-lucide="trash" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
         }
 
-        async function eliminarUsuario(id) {
-            if (!confirm('¿Eliminar esta cuenta y todos sus datos?')) return;
-            await db.ingresos.where('usuarioId').equals(id).delete();
-            await db.gastos.where('usuarioId').equals(id).delete();
-            await db.deudas.where('usuarioId').equals(id).delete();
-            await db.clientes.where('usuarioId').equals(id).delete();
-            await db.usuarios.delete(id);
-            showToast('Usuario eliminado');
-            renderizarAdmin();
+        async function renderAdminPanel() {
+            if (currentUser.role !== 'admin') return;
+
+            const tbody = document.getElementById('users-table-body');
+            tbody.innerHTML = '';
+
+            const users = await db.usuarios.toArray();
+            users.forEach(u => {
+                const tr = document.createElement('tr');
+                tr.className = "border-b border-slate-800 hover:bg-slate-800/40 transition";
+                tr.innerHTML = `
+                    <td class="py-4.5 font-medium text-slate-200">${u.username}</td>
+                    <td class="py-4.5">
+                        <span class="px-2.5 py-1 text-xs rounded-full font-bold uppercase tracking-wider ${u.role === 'admin' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-slate-700 text-slate-300'}">${u.role}</span>
+                    </td>
+                    <td class="py-4.5 text-right">
+                        ${u.username !== 'admin' ? `
+                            <button onclick="deleteUser(${u.id})" class="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 transition" title="Borrar usuario">
+                                <i data-lucide="user-x" class="w-4 h-4"></i>
+                            </button>
+                        ` : '<span class="text-xs text-slate-500 italic pr-2">Protegido</span>'}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
         }
 
-        // ============ 15. Utilidades generales ============
-        function establecerFechaPorDefecto() {
-            const hoy = new Date().toISOString().split('T')[0];
-            document.getElementById('ingreso-fecha').value = hoy;
-            document.getElementById('gasto-fecha').value = hoy;
-            document.getElementById('deuda-vencimiento').value = hoy;
-        }
-
-        function actualizarEstadoConexion() {
-            const indicator = document.getElementById('connection-status');
-            const text = document.getElementById('connection-text');
-            if (!indicator) return;
-            if (navigator.onLine) {
-                indicator.className = "flex items-center gap-2 bg-slate-800 px-2 py-1 rounded-full text-xs text-brandGreen";
-                text.textContent = "Online";
-            } else {
-                indicator.className = "flex items-center gap-2 bg-slate-800 px-2 py-1 rounded-full text-xs text-brandRed";
-                text.textContent = "Offline";
+        // --- 9. ELIMINACIÓN DE REGISTROS ---
+        async function deleteTransaction(id) {
+            if (confirm("¿Estás seguro de que deseas eliminar este registro del historial? Esta acción alterará el cálculo del flujo de caja disponible.")) {
+                await db.transacciones.delete(id);
+                await updateBalancesAndDashboards();
             }
         }
 
-        window.addEventListener('online', actualizarEstadoConexion);
-        window.addEventListener('offline', actualizarEstadoConexion);
-
-        async function inicializarAppTrasLogin() {
-            const navAdmin = document.getElementById('nav-admin-sidebar');
-            if (usuarioActual.rol === 'admin') {
-                navAdmin.classList.remove('hidden');
-                navAdmin.classList.add('flex');
-            } else {
-                navAdmin.classList.add('hidden');
+        async function deleteDebt(id) {
+            if (confirm("¿Seguro que deseas eliminar esta cuenta del sistema?")) {
+                await db.deudas.delete(id);
+                await updateBalancesAndDashboards();
             }
-
-            document.getElementById('sidebar-user-name').textContent = usuarioActual.nombre;
-            document.getElementById('sidebar-user-role').textContent = usuarioActual.rol === 'admin' ? 'Administrador' : 'Miembro';
-
-            establecerFechaPorDefecto();
-            actualizarEstadoConexion();
-            await actualizarPanelPrincipal(true);
-            await actualizarSelectClientes();
-            switchView('inicio');
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            intentarRestaurarSesion();
-        });
+        async function deleteUser(id) {
+            if (confirm("¿Estás seguro de que deseas revocar los accesos de este usuario?")) {
+                await db.usuarios.delete(id);
+                await renderAdminPanel();
+                lucide.createIcons();
+            }
+        }
+
+        // --- 10. GESTIÓN DE MODAL DE PAGO ---
+        function openPaymentModal(type, targetId, installmentIdx, maxAmount, subtitleText) {
+            document.getElementById('modal-target-type').value = type;
+            document.getElementById('modal-target-id').value = targetId;
+            document.getElementById('modal-installment-idx').value = installmentIdx;
+            document.getElementById('modal-max-amount').innerText = `$${maxAmount.toFixed(2)}`;
+            document.getElementById('modal-concept-subtitle').innerText = subtitleText;
+            
+            const payAmountInput = document.getElementById('modal-pay-amount');
+            payAmountInput.value = maxAmount.toFixed(2);
+            payAmountInput.max = maxAmount;
+
+            document.getElementById('payment-modal').classList.remove('hidden');
+            document.getElementById('modal-pay-method').value = 'USD';
+            document.getElementById('modal-conversion-notice').classList.add('hidden');
+        }
+
+        function closePaymentModal() {
+            document.getElementById('payment-modal').classList.add('hidden');
+            document.getElementById('modal-payment-form').reset();
+        }
+
+        // --- 11. RESPALDO Y RESTAURACIÓN DE SEGURIDAD ---
+        async function exportData() {
+            try {
+                const txs = await db.transacciones.where('userId').equals(currentUser.id).toArray();
+                const compras = await db.compras.where('userId').equals(currentUser.id).toArray();
+                const deudas = await db.deudas.where('userId').equals(currentUser.id).toArray();
+
+                const backup = {
+                    metadata: {
+                        exportDate: Date.now(),
+                        user: currentUser.username
+                    },
+                    transacciones: txs,
+                    compras,
+                    deudas
+                };
+
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup, null, 2));
+                const dlAnchor = document.createElement('a');
+                dlAnchor.setAttribute("href", dataStr);
+                dlAnchor.setAttribute("download", `InterFinanzas_Backup_${currentUser.username}.json`);
+                document.body.appendChild(dlAnchor);
+                dlAnchor.click();
+                dlAnchor.remove();
+            } catch (err) {
+                alert("Error al exportar los datos de seguridad: " + err.message);
+            }
+        }
+
+        // --- 12. HERRAMIENTAS ADMINISTRATIVAS ---
+        async function dangerWipeDatabase() {
+            if (confirm("ADVERTENCIA CRÍTICA: Se borrarán permanentemente todas las transacciones, deudas, usuarios de esta instalación, restableciendo el aplicativo al estado de fábrica. ¿Deseas continuar?")) {
+                const p = prompt("Por favor escribe la palabra 'BORRAR' para confirmar la acción:");
+                if (p === 'BORRAR') {
+                    await db.delete();
+                    localStorage.clear();
+                    alert("Base de datos local IndexedDB eliminada con éxito. Recargando la aplicación...");
+                    window.location.reload();
+                }
+            }
+        }
     </script>
 </body>
 </html>
