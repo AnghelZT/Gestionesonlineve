@@ -1,5 +1,415 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finanzas App - Control de Cuotas y Caja</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Dexie.js para IndexedDB -->
+    <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
+    <!-- Firebase para sincronización en la nube -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col pb-12">
+
+    <!-- BARRA DE NAVEGACIÓN SUPERIOR -->
+    <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-40 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-600 p-2 rounded-lg text-white">
+                    <i data-lucide="wallet"></i>
+                </div>
+                <span class="font-bold text-xl tracking-tight bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">InterFinanzas</span>
+            </div>
+            
+            <!-- Tasa BCV y Estado de Usuario -->
+            <div class="flex items-center space-x-4">
+                <div class="hidden sm:flex flex-col text-right">
+                    <span class="text-xs text-slate-400">Tasa Oficial BCV</span>
+                    <span id="bcv-rate-display" class="text-sm font-semibold text-emerald-400">Cargando...</span>
+                </div>
+                <div id="user-profile-nav" class="hidden flex items-center space-x-3 border-l border-slate-700 pl-4">
+                    <div class="text-right">
+                        <p id="nav-username" class="text-sm font-medium text-slate-200">Usuario</p>
+                        <span id="nav-role" class="text-xs text-indigo-400">Rol</span>
+                    </div>
+                    <button id="btn-logout" class="p-2 hover:bg-slate-700 rounded-lg text-rose-400 transition" title="Cerrar Sesión">
+                        <i data-lucide="log-out"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6">
+        
+        <!-- PANTALLA DE AUTENTICACIÓN (LOGIN / REGISTRO) -->
+        <section id="auth-section" class="max-w-md mx-auto my-12 bg-slate-800 border border-slate-700 rounded-2xl p-8 shadow-xl">
+            <div class="text-center mb-8">
+                <h2 id="auth-title" class="text-2xl font-bold text-slate-100">Iniciar Sesión</h2>
+                <p id="auth-subtitle" class="text-slate-400 text-sm mt-2">Accede para gestionar tus finanzas</p>
+            </div>
+            
+            <form id="auth-form" class="space-y-5">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Usuario</label>
+                    <div class="relative">
+                        <i data-lucide="user" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5"></i>
+                        <input type="text" id="auth-username" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-11 pr-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition" placeholder="Introduce tu usuario">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Contraseña</label>
+                    <div class="relative">
+                        <i data-lucide="lock" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5"></i>
+                        <input type="password" id="auth-password" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-11 pr-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition" placeholder="••••••••">
+                    </div>
+                </div>
+                
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-indigo-600/20 transition-all duration-200 transform hover:-translate-y-0.5">
+                    Entrar a la Plataforma
+                </button>
+            </form>
+
+            <div class="mt-6 text-center">
+                <button id="toggle-auth-mode" class="text-sm text-indigo-400 hover:text-indigo-300 transition">¿No tienes cuenta? Regístrate aquí</button>
+            </div>
+        </section>
+
+        <!-- DASHBOARD GENERAL (CONTENIDO PRINCIPAL) -->
+        <section id="dashboard-section" class="hidden space-y-6">
+            
+            <!-- Resumen de Saldos (Cards) -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-gradient-to-br from-indigo-950 to-slate-800 border border-indigo-500/20 rounded-2xl p-5 shadow-md">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wider text-indigo-300">Caja Disponible ($)</p>
+                            <h3 id="balance-usd" class="text-2xl font-bold mt-2 text-white">$0.00</h3>
+                        </div>
+                        <span class="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg"><i data-lucide="banknote"></i></span>
+                    </div>
+                </div>
+                <div class="bg-gradient-to-br from-emerald-950 to-slate-800 border border-emerald-500/20 rounded-2xl p-5 shadow-md">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wider text-emerald-300">Caja Disponible (BS)</p>
+                            <h3 id="balance-ves" class="text-2xl font-bold mt-2 text-white">Bs 0.00</h3>
+                        </div>
+                        <span class="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg"><i data-lucide="coins"></i></span>
+                    </div>
+                </div>
+                <div class="bg-gradient-to-br from-amber-950 to-slate-800 border border-amber-500/20 rounded-2xl p-5 shadow-md">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wider text-amber-300">Cobros Pendientes</p>
+                            <h3 id="pending-receivables" class="text-2xl font-bold mt-2 text-white">$0.00</h3>
+                        </div>
+                        <span class="p-2 bg-amber-500/10 text-amber-400 rounded-lg"><i data-lucide="trending-up"></i></span>
+                    </div>
+                </div>
+                <div class="bg-gradient-to-br from-rose-950 to-slate-800 border border-rose-500/20 rounded-2xl p-5 shadow-md">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wider text-rose-300">Deudas Pendientes</p>
+                            <h3 id="pending-payables" class="text-2xl font-bold mt-2 text-white">$0.00</h3>
+                        </div>
+                        <span class="p-2 bg-rose-500/10 text-rose-400 rounded-lg"><i data-lucide="trending-down"></i></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-md">
+                <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-cyan-300">Calculadora USD / BS</p>
+                        <h3 class="text-xl font-bold mt-1 text-white">Convierte al tipo de cambio actual</h3>
+                    </div>
+                    <div class="text-sm text-slate-400">Tasa actual: <span id="calculator-rate" class="font-semibold text-emerald-400">Bs 0.00</span></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
+                    <div class="bg-slate-900/70 border border-slate-700 rounded-xl p-4">
+                        <label class="block text-xs font-semibold text-slate-400 mb-2">Dólares a Bolívares</label>
+                        <input id="usd-to-ves-input" type="number" step="0.01" value="1" class="w-full bg-slate-800 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-cyan-500" placeholder="0.00">
+                        <p id="usd-to-ves-result" class="mt-3 text-lg font-semibold text-emerald-400">Bs 0.00</p>
+                    </div>
+                    <div class="bg-slate-900/70 border border-slate-700 rounded-xl p-4">
+                        <label class="block text-xs font-semibold text-slate-400 mb-2">Bolívares a Dólares</label>
+                        <input id="ves-to-usd-input" type="number" step="0.01" value="100" class="w-full bg-slate-800 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="0.00">
+                        <p id="ves-to-usd-result" class="mt-3 text-lg font-semibold text-cyan-400">$0.00</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NAVEGACIÓN DE PESTAÑAS -->
+            <div class="flex border-b border-slate-700 overflow-x-auto hide-scrollbar space-x-1">
+                <button onclick="switchTab('transacciones')" class="tab-btn px-5 py-3 font-semibold text-sm border-b-2 transition whitespace-nowrap" id="tab-transacciones">Transacciones</button>
+                <button onclick="switchTab('compras')" class="tab-btn px-5 py-3 font-semibold text-sm border-b-2 transition whitespace-nowrap" id="tab-compras">Financiamientos (Cashea)</button>
+                <button onclick="switchTab('deudas')" class="tab-btn px-5 py-3 font-semibold text-sm border-b-2 transition whitespace-nowrap" id="tab-deudas">Cuentas por Pagar/Cobrar</button>
+                <button onclick="switchTab('admin')" class="tab-btn px-5 py-3 font-semibold text-sm border-b-2 transition whitespace-nowrap hidden" id="tab-admin">Panel de Administración</button>
+            </div>
+
+            <!-- SECCIÓN: TRANSACCIONES -->
+            <div id="panel-transacciones" class="tab-panel hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Formulario de Ingreso / Egreso -->
+                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 h-fit">
+                        <h4 class="font-bold text-lg mb-4 text-slate-200">Registrar Operación</h4>
+                        <form id="tx-form" class="space-y-4">
+                            <div class="grid grid-cols-2 gap-2">
+                                <button type="button" id="tx-type-ingreso" class="tx-type-btn py-2.5 rounded-xl font-bold text-sm bg-indigo-600 text-white border-2 border-indigo-500 transition">INGRESO</button>
+                                <button type="button" id="tx-type-egreso" class="tx-type-btn py-2.5 rounded-xl font-bold text-sm bg-slate-900 text-slate-400 border border-slate-700 hover:border-slate-600 transition">EGRESO</button>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Monto</label>
+                                <div class="relative">
+                                    <input type="number" id="tx-monto" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="0.00">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Moneda</label>
+                                <select id="tx-moneda" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500">
+                                    <option value="USD">Dólares (USD / USDT)</option>
+                                    <option value="VES">Bolívares (VES)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Descripción</label>
+                                <input type="text" id="tx-descripcion" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="Ej. Pago de servicio de transcripción">
+                            </div>
+                            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition">Guardar Transacción</button>
+                        </form>
+                    </div>
+
+                    <!-- Historial de Transacciones -->
+                    <div class="lg:col-span-2 bg-slate-800 border border-slate-700 rounded-2xl p-6">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+                            <h4 class="font-bold text-lg text-slate-200">Historial Reciente</h4>
+                            <div class="flex items-center gap-2">
+                                <select id="filter-tx-type" class="bg-slate-900 border border-slate-700 text-xs rounded-xl px-3 py-2 text-slate-300 focus:outline-none focus:border-indigo-500">
+                                    <option value="todos">Todos los flujos</option>
+                                    <option value="ingreso">Ingresos</option>
+                                    <option value="egreso">Egresos</option>
+                                </select>
+                                <button onclick="exportData()" class="p-2 bg-slate-900 hover:bg-slate-700 border border-slate-700 rounded-xl text-slate-300 transition" title="Exportar Copia JSON">
+                                    <i data-lucide="download" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="border-b border-slate-700 text-slate-400 text-xs uppercase tracking-wider font-semibold">
+                                        <th class="pb-3">Detalle / Fecha</th>
+                                        <th class="pb-3">Tipo</th>
+                                        <th class="pb-3 text-right">Monto</th>
+                                        <th class="pb-3 text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tx-table-body" class="divide-y divide-slate-800 text-sm">
+                                    <!-- Dinámico -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN: FINANCIAMIENTOS CASHEA -->
+            <div id="panel-compras" class="tab-panel hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Registro de Financiamiento -->
+                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 h-fit">
+                        <h4 class="font-bold text-lg mb-4 text-indigo-400 flex items-center gap-2">
+                            <i data-lucide="percent"></i> Nuevo Financiamiento
+                        </h4>
+                        <form id="purchase-form" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Artículo / Concepto</label>
+                                <input type="text" id="pur-item" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="Ej. Teléfono Celular">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Monto Total ($)</label>
+                                <input type="number" id="pur-total" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="0.00">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">Inicial ($)</label>
+                                    <input type="number" id="pur-downpayment" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="Ej. 60.00">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">N° de Cuotas</label>
+                                    <select id="pur-installments" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500">
+                                        <option value="3">3 Cuotas</option>
+                                        <option value="4">4 Cuotas</option>
+                                        <option value="6">6 Cuotas</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition">Dividir & Registrar</button>
+                        </form>
+                    </div>
+
+                    <!-- Lista de Financiamientos Activos -->
+                    <div class="lg:col-span-2 bg-slate-800 border border-slate-700 rounded-2xl p-6">
+                        <h4 class="font-bold text-lg mb-6 text-slate-200">Planes de Financiamiento</h4>
+                        <div id="purchases-list" class="space-y-4">
+                            <!-- Dinámico -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN: CUENTAS POR COBRAR / PAGAR -->
+            <div id="panel-deudas" class="tab-panel hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Nueva Deuda / Cobro -->
+                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 h-fit">
+                        <h4 class="font-bold text-lg mb-4 text-slate-200">Registrar Cuenta</h4>
+                        <form id="debt-form" class="space-y-4">
+                            <div class="grid grid-cols-2 gap-2">
+                                <button type="button" id="debt-type-cobrar" class="debt-type-btn py-2.5 rounded-xl font-bold text-sm bg-indigo-600 text-white border-2 border-indigo-500 transition">POR COBRAR</button>
+                                <button type="button" id="debt-type-pagar" class="debt-type-btn py-2.5 rounded-xl font-bold text-sm bg-slate-900 text-slate-400 border border-slate-700 hover:border-slate-600 transition">POR PAGAR</button>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Persona / Cliente</label>
+                                <input type="text" id="debt-person" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="Nombre de la persona">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Concepto</label>
+                                <input type="text" id="debt-concept" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="Ej. Préstamo personal o servicio">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Monto Inicial ($)</label>
+                                <input type="number" id="debt-amount" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="0.00">
+                            </div>
+                            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition">Guardar Cuenta</button>
+                        </form>
+                    </div>
+
+                    <!-- Lista de Cuentas -->
+                    <div class="lg:col-span-2 bg-slate-800 border border-slate-700 rounded-2xl p-6">
+                        <h4 class="font-bold text-lg mb-6 text-slate-200 font-semibold">Cuentas Pendientes de Cobro y Pago</h4>
+                        <div id="debts-list" class="space-y-4">
+                            <!-- Dinámico -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN: PANEL DE ADMINISTRACIÓN -->
+            <div id="panel-admin" class="tab-panel hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Configuración y Sincronización -->
+                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 space-y-6">
+                        <div>
+                            <h4 class="font-bold text-lg mb-2 text-slate-200">Sincronización BCV</h4>
+                            <p class="text-xs text-slate-400 mb-4">La tasa se actualiza automáticamente a las 5:00 PM y 7:00 PM (hora de Venezuela) y también puedes forzarla manualmente.</p>
+                            <button onclick="fetchBCVRate(true)" class="flex items-center justify-center gap-2 w-full bg-slate-900 hover:bg-slate-700 border border-slate-700 text-slate-200 py-3 rounded-xl transition">
+                                <i data-lucide="refresh-cw" class="w-4 h-4"></i> Actualizar Tasa Manualmente
+                            </button>
+                        </div>
+                        <hr class="border-slate-700" />
+                        <div>
+                            <h4 class="font-bold text-lg mb-2 text-slate-200">Eliminación de Datos</h4>
+                            <p class="text-xs text-slate-400 mb-4">Esta acción restablecerá por completo toda la base de datos local borrando transacciones, cuotas e historiales.</p>
+                            <button onclick="dangerWipeDatabase()" class="flex items-center justify-center gap-2 w-full bg-rose-950/40 hover:bg-rose-900 border border-rose-800 text-rose-300 py-3 rounded-xl transition">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i> Restablecer Base de Datos
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Lista de Usuarios Existentes -->
+                    <div class="lg:col-span-2 bg-slate-800 border border-slate-700 rounded-2xl p-6">
+                        <h4 class="font-bold text-lg mb-4 text-slate-200">Gestión de Usuarios del Sistema</h4>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="border-b border-slate-700 text-slate-400 text-xs uppercase tracking-wider font-semibold">
+                                        <th class="pb-3">Nombre de Usuario</th>
+                                        <th class="pb-3">Rol del Sistema</th>
+                                        <th class="pb-3 text-right">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="users-table-body" class="divide-y divide-slate-800 text-sm">
+                                    <!-- Dinámico -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- MODAL GENERAL PARA REGISTRO DE ABONOS -->
+    <div id="payment-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4">
+        <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onclick="closePaymentModal()"></div>
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 relative z-10 shadow-2xl">
+            <h4 class="font-bold text-lg mb-2 text-indigo-400">Procesar Abono / Pago</h4>
+            <p id="modal-concept-subtitle" class="text-xs text-slate-400 mb-6">Abonar saldo a la deuda activa</p>
+            
+            <form id="modal-payment-form" class="space-y-4">
+                <input type="hidden" id="modal-target-type">
+                <input type="hidden" id="modal-target-id">
+                <input type="hidden" id="modal-installment-idx">
+
+                <div>
+                    <p class="text-xs text-slate-400 mb-1">Monto Máximo Pendiente</p>
+                    <p id="modal-max-amount" class="text-sm font-semibold text-amber-400">$0.00</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">Monto del Abono ($)</label>
+                    <input type="number" id="modal-pay-amount" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="0.00">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">Método / Moneda de Pago</label>
+                    <select id="modal-pay-method" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500">
+                        <option value="USD">Divisas (Dólares / USDT) - Se resta de Caja USD</option>
+                        <option value="VES">Bolívares (VES) - Se resta de Caja VES calculando al BCV</option>
+                    </select>
+                </div>
+                <div id="modal-conversion-notice" class="hidden text-xs bg-slate-900/80 border border-slate-700/50 p-3 rounded-xl text-emerald-400">
+                    Calculando al BCV...
+                </div>
+                <div class="flex gap-2 justify-end pt-2">
+                    <button type="button" onclick="closePaymentModal()" class="px-4 py-2.5 rounded-xl border border-slate-600 text-slate-300 font-semibold text-sm hover:bg-slate-700 transition">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-emerald-600/10 transition">Registrar Abono</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- LOGICA DE LA APLICACIÓN -->
     <script>
+        window.FIREBASE_CONFIG = window.FIREBASE_CONFIG || {
+            apiKey: "TU_API_KEY",
+            authDomain: "TU_PROJECT_ID.firebaseapp.com",
+            projectId: "TU_PROJECT_ID",
+            storageBucket: "TU_PROJECT_ID.appspot.com",
+            messagingSenderId: "TU_MESSAGING_SENDER_ID",
+            appId: "TU_APP_ID"
+        };
+
         // --- 1. CONFIGURACIÓN DE LA BASE DE DATOS LOCAL (DEXIE) ---
         const db = new Dexie("InterFinanzasDB");
         db.version(1).stores({
@@ -15,6 +425,79 @@
         let bcvRate = 45.00; // Valor de respaldo inicial por si falla la conexión externa
         let currentTxType = 'ingreso';
         let currentDebtType = 'cobrar';
+        let lastScheduledBcvRefreshKey = null;
+        let firestoreDb = null;
+        let cloudSyncEnabled = false;
+
+        function getCaracasDate(date = new Date()) {
+            const formatter = new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'America/Caracas',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            const parts = formatter.formatToParts(date);
+            const values = Object.fromEntries(parts.filter(part => part.type !== 'literal').map(part => [part.type, part.value]));
+            return {
+                year: parseInt(values.year, 10),
+                month: parseInt(values.month, 10),
+                day: parseInt(values.day, 10),
+                hour: parseInt(values.hour, 10),
+                minute: parseInt(values.minute, 10),
+                second: parseInt(values.second, 10)
+            };
+        }
+
+        function formatNumber(value) {
+            return Number(value || 0).toLocaleString('es-VE', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function updateCalculator() {
+            const usdInput = document.getElementById('usd-to-ves-input');
+            const vesInput = document.getElementById('ves-to-usd-input');
+            if (!usdInput || !vesInput) return;
+
+            const rate = Number(bcvRate || 0);
+            const usdAmount = parseFloat(usdInput.value) || 0;
+            const vesAmount = parseFloat(vesInput.value) || 0;
+
+            document.getElementById('calculator-rate').textContent = `Bs ${rate.toFixed(2)}`;
+            document.getElementById('usd-to-ves-result').textContent = `Bs ${formatNumber(usdAmount * rate)}`;
+            document.getElementById('ves-to-usd-result').textContent = `$${formatNumber(vesAmount / (rate || 1))}`;
+        }
+
+        function setupCalculatorInputs() {
+            const usdInput = document.getElementById('usd-to-ves-input');
+            const vesInput = document.getElementById('ves-to-usd-input');
+            if (!usdInput || !vesInput) return;
+
+            usdInput.addEventListener('input', updateCalculator);
+            vesInput.addEventListener('input', updateCalculator);
+        }
+
+        function setupBcvAutoRefresh() {
+            const runScheduledCheck = () => {
+                const caracasNow = getCaracasDate(new Date());
+                const currentMinute = caracasNow.hour * 60 + caracasNow.minute;
+                const targetMinutes = [17 * 60, 19 * 60];
+                const refreshKey = `${caracasNow.year}-${caracasNow.month}-${caracasNow.day}-${currentMinute}`;
+
+                if (targetMinutes.includes(currentMinute) && lastScheduledBcvRefreshKey !== refreshKey) {
+                    lastScheduledBcvRefreshKey = refreshKey;
+                    fetchBCVRate(true);
+                }
+            };
+
+            runScheduledCheck();
+            setInterval(runScheduledCheck, 60 * 1000);
+        }
 
         // --- 3. ENCRIPTACIÓN DE CONTRASEÑA (SHA-256) ---
         async function hashPassword(password) {
@@ -24,11 +507,117 @@
             return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
         }
 
+        async function initializeCloudSync() {
+            try {
+                const config = window.FIREBASE_CONFIG || null;
+                if (!config || !config.projectId || config.projectId === 'your-project-id') {
+                    cloudSyncEnabled = false;
+                    return;
+                }
+                if (!window.firebase || !window.firebase.apps) {
+                    cloudSyncEnabled = false;
+                    return;
+                }
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(config);
+                }
+                firestoreDb = firebase.firestore();
+                cloudSyncEnabled = true;
+            } catch (err) {
+                console.warn('No se pudo inicializar Firestore. Se usará solo almacenamiento local.', err);
+                cloudSyncEnabled = false;
+            }
+        }
+
+        async function ensureLocalUserRecord(username, passwordHash, role = 'user') {
+            let user = await db.usuarios.get({ username });
+            if (user) {
+                if (passwordHash && user.password !== passwordHash) {
+                    user.password = passwordHash;
+                    await db.usuarios.put(user);
+                }
+                return user;
+            }
+
+            const id = await db.usuarios.add({ username, password: passwordHash, role });
+            return { id, username, password: passwordHash, role };
+        }
+
+        async function syncCurrentUserDataToCloud() {
+            if (!cloudSyncEnabled || !currentUser || !firestoreDb) return;
+
+            try {
+                const txs = await db.transacciones.where('userId').equals(currentUser.id).toArray();
+                const compras = await db.compras.where('userId').equals(currentUser.id).toArray();
+                const deudas = await db.deudas.where('userId').equals(currentUser.id).toArray();
+                const configuracion = await db.configuracion.toArray();
+
+                await firestoreDb.collection('finanzas_users').doc(currentUser.username).set({
+                    username: currentUser.username,
+                    password: currentUser.password,
+                    role: currentUser.role,
+                    updatedAt: Date.now(),
+                    data: {
+                        transacciones: txs.map(item => ({ ...item, userId: currentUser.id })),
+                        compras: compras.map(item => ({ ...item, userId: currentUser.id })),
+                        deudas: deudas.map(item => ({ ...item, userId: currentUser.id })),
+                        configuracion
+                    }
+                }, { merge: true });
+            } catch (err) {
+                console.warn('No se pudo sincronizar con Firestore.', err);
+            }
+        }
+
+        async function hydrateCurrentUserFromCloud(userRecord) {
+            if (!cloudSyncEnabled || !firestoreDb || !userRecord) return;
+
+            try {
+                const snap = await firestoreDb.collection('finanzas_users').doc(userRecord.username).get();
+                if (!snap.exists) {
+                    await syncCurrentUserDataToCloud();
+                    return;
+                }
+
+                const remoteUser = snap.data();
+                if (remoteUser.password && remoteUser.password !== userRecord.password) {
+                    return;
+                }
+
+                const userData = remoteUser.data || {};
+                await db.transaction('rw', db.transacciones, db.compras, db.deudas, db.configuracion, async () => {
+                    await db.transacciones.where('userId').equals(userRecord.id).delete();
+                    await db.compras.where('userId').equals(userRecord.id).delete();
+                    await db.deudas.where('userId').equals(userRecord.id).delete();
+
+                    for (const item of userData.transacciones || []) {
+                        await db.transacciones.add({ ...item, userId: userRecord.id });
+                    }
+                    for (const item of userData.compras || []) {
+                        await db.compras.add({ ...item, userId: userRecord.id });
+                    }
+                    for (const item of userData.deudas || []) {
+                        await db.deudas.add({ ...item, userId: userRecord.id });
+                    }
+                    for (const item of userData.configuracion || []) {
+                        await db.configuracion.put(item);
+                    }
+                });
+
+                await syncCurrentUserDataToCloud();
+            } catch (err) {
+                console.warn('No se pudo cargar la información remota del usuario.', err);
+            }
+        }
+
         // --- 4. INICIALIZACIÓN ---
         document.addEventListener('DOMContentLoaded', async () => {
             lucide.createIcons();
+            await initializeCloudSync();
             await checkSeedUsers();
+            setupCalculatorInputs();
             await fetchBCVRate();
+            setupBcvAutoRefresh();
             await checkSession();
             setupEventListeners();
         });
@@ -38,75 +627,39 @@
             const count = await db.usuarios.count();
             if (count === 0) {
                 const adminHash = await hashPassword('admin123');
-                await db.usuarios.add({
-                    username: 'admin',
-                    password: adminHash,
-                    role: 'admin'
-                });
+                const adminUser = await ensureLocalUserRecord('admin', adminHash, 'admin');
+                currentUser = adminUser;
+                await syncCurrentUserDataToCloud();
+                currentUser = null;
             }
         }
 
-        // Obtener la tasa del BCV (Actualizado para las 5pm y 7pm hora de Venezuela)
+        // Obtener la tasa del BCV
         async function fetchBCVRate(forced = false) {
             try {
                 const storedRate = await db.configuracion.get('bcv_rate');
                 const lastUpdated = await db.configuracion.get('bcv_last_updated');
-                
-                // Obtener hora actual en la zona horaria de Venezuela
-                const now = new Date();
-                const venzTime = new Intl.DateTimeFormat('en-US', {
-                    timeZone: 'America/Caracas',
-                    hour: 'numeric',
-                    minute: 'numeric',
-                    hour12: false
-                }).formatToParts(now);
+                const now = Date.now();
 
-                const currentHour = parseInt(venzTime.find(p => p.type === 'hour').value);
-                const currentMinute = parseInt(venzTime.find(p => p.type === 'minute').value);
-
-                let needsUpdate = forced || !storedRate || !lastUpdated;
-
-                if (!needsUpdate && lastUpdated) {
-                    const lastUpdatedDate = new Date(parseInt(lastUpdated.value));
-                    const lastUpdatedDay = lastUpdatedDate.toLocaleDateString('es-VE', { timeZone: 'America/Caracas' });
-                    const todayDay = now.toLocaleDateString('es-VE', { timeZone: 'America/Caracas' });
-
-                    // Ventana de las 5:00 PM (17:00 a 17:15)
-                    if (currentHour === 17 && currentMinute <= 15) {
-                        const lastUpdatedHour = lastUpdatedDate.getUTCHours() - 4; // Ajuste aproximado a Venz o evaluar por string
-                        const lastString = lastUpdatedDate.toLocaleTimeString('es-VE', { timeZone: 'America/Caracas', hour: '2-digit', hour12: false });
-                        if (lastUpdatedDay !== todayDay || parseInt(lastString) < 17) {
-                            needsUpdate = true;
-                        }
-                    }
-                    
-                    // Ventana de las 7:00 PM (19:00 a 19:15)
-                    if (currentHour === 19 && currentMinute <= 15) {
-                        const lastString = lastUpdatedDate.toLocaleTimeString('es-VE', { timeZone: 'America/Caracas', hour: '2-digit', hour12: false });
-                        if (lastUpdatedDay !== todayDay || parseInt(lastString) < 19) {
-                            needsUpdate = true;
-                        }
-                    }
-                }
-
-                // Ejecución de la consulta API si expira o se requiere forzar
-                if (needsUpdate) {
+                // Actualizar si es forzado, no hay datos, o pasaron más de 12 horas
+                if (forced || !storedRate || !lastUpdated || (now - parseInt(lastUpdated.value)) > 12 * 60 * 60 * 1000) {
                     const response = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
                     const data = await response.json();
                     if (data && data.promedio) {
                         bcvRate = parseFloat(data.promedio);
                         await db.configuracion.put({ key: 'bcv_rate', value: bcvRate });
-                        await db.configuracion.put({ key: 'bcv_last_updated', value: Date.now().toString() });
+                        await db.configuracion.put({ key: 'bcv_last_updated', value: now.toString() });
                     }
-                } else if (storedRate) {
+                } else {
                     bcvRate = parseFloat(storedRate.value);
                 }
             } catch (err) {
-                console.warn("Fallo al obtener tasa API. Usando tasa de respaldo o cache.", err);
+                console.warn("Fallo al obtener tasa API. Usando tasa de respaldo o caché.", err);
                 const fallback = await db.configuracion.get('bcv_rate');
                 if (fallback) bcvRate = parseFloat(fallback.value);
             }
             document.getElementById('bcv-rate-display').innerText = `Bs ${bcvRate.toFixed(2)}`;
+            updateCalculator();
         }
 
         // Control de Sesión
@@ -117,6 +670,7 @@
                 const dbUser = await db.usuarios.get({ username: user.username });
                 if (dbUser) {
                     currentUser = dbUser;
+                    await hydrateCurrentUserFromCloud(currentUser);
                     showDashboard();
                     return;
                 }
@@ -182,9 +736,18 @@
                 const isLogin = document.getElementById('auth-title').innerText === 'Iniciar Sesión';
 
                 if (isLogin) {
-                    const matchedUser = await db.usuarios.get({ username: username, password: hashedPassword });
+                    let matchedUser = await db.usuarios.get({ username: username, password: hashedPassword });
+                    if (!matchedUser && cloudSyncEnabled) {
+                        const remoteDoc = firestoreDb.collection('finanzas_users').doc(username);
+                        const snap = await remoteDoc.get();
+                        if (snap.exists && snap.data().password === hashedPassword) {
+                            matchedUser = await ensureLocalUserRecord(username, hashedPassword, snap.data().role || 'user');
+                        }
+                    }
+
                     if (matchedUser) {
                         currentUser = matchedUser;
+                        await hydrateCurrentUserFromCloud(currentUser);
                         localStorage.setItem('activeUserSession', JSON.stringify({ username }));
                         document.getElementById('auth-form').reset();
                         showDashboard();
@@ -197,9 +760,18 @@
                         alert("El nombre de usuario ya se encuentra registrado.");
                         return;
                     }
-                    const newUser = { username, password: hashedPassword, role: 'user' };
-                    await db.usuarios.add(newUser);
-                    currentUser = await db.usuarios.get({ username });
+                    const newUser = await ensureLocalUserRecord(username, hashedPassword, 'user');
+                    currentUser = newUser;
+                    if (cloudSyncEnabled && firestoreDb) {
+                        await firestoreDb.collection('finanzas_users').doc(username).set({
+                            username,
+                            password: hashedPassword,
+                            role: 'user',
+                            updatedAt: Date.now(),
+                            data: { transacciones: [], compras: [], deudas: [], configuracion: [] }
+                        }, { merge: true });
+                    }
+                    await syncCurrentUserDataToCloud();
                     localStorage.setItem('activeUserSession', JSON.stringify({ username }));
                     document.getElementById('auth-form').reset();
                     showDashboard();
@@ -233,6 +805,7 @@
                     userId: currentUser.id
                 });
 
+                await syncCurrentUserDataToCloud();
                 document.getElementById('tx-form').reset();
                 setTxType('ingreso');
                 await updateBalancesAndDashboards();
@@ -259,6 +832,7 @@
                     userId: currentUser.id
                 });
 
+                await syncCurrentUserDataToCloud();
                 document.getElementById('debt-form').reset();
                 setDebtType('cobrar');
                 await updateBalancesAndDashboards();
@@ -304,6 +878,8 @@
                     userId: currentUser.id
                 });
 
+                await syncCurrentUserDataToCloud();
+
                 // Registrar de forma automática la inicial como un egreso de Caja USD
                 await db.transacciones.add({
                     fecha: now,
@@ -314,6 +890,7 @@
                     userId: currentUser.id
                 });
 
+                await syncCurrentUserDataToCloud();
                 document.getElementById('purchase-form').reset();
                 await updateBalancesAndDashboards();
             });
@@ -379,6 +956,7 @@
                             descripcion: `Abono Cuota N°${inst.installmentNumber} de: ${purchase.item}`,
                             userId: currentUser.id
                         });
+                        await syncCurrentUserDataToCloud();
                     }
                 } else if (targetType === 'deuda') {
                     const debt = await db.deudas.get(targetId);
@@ -406,6 +984,7 @@
                             descripcion: `${descPrefix}: ${debt.concepto} (${debt.persona})`,
                             userId: currentUser.id
                         });
+                        await syncCurrentUserDataToCloud();
                     }
                 }
 
@@ -712,6 +1291,7 @@
         async function deleteTransaction(id) {
             if (confirm("¿Estás seguro de que deseas eliminar este registro del historial? Esta acción alterará el cálculo del flujo de caja disponible.")) {
                 await db.transacciones.delete(id);
+                await syncCurrentUserDataToCloud();
                 await updateBalancesAndDashboards();
             }
         }
@@ -719,6 +1299,7 @@
         async function deleteDebt(id) {
             if (confirm("¿Seguro que deseas eliminar esta cuenta del sistema?")) {
                 await db.deudas.delete(id);
+                await syncCurrentUserDataToCloud();
                 await updateBalancesAndDashboards();
             }
         }
@@ -726,6 +1307,9 @@
         async function deleteUser(id) {
             if (confirm("¿Estás seguro de que deseas revocar los accesos de este usuario?")) {
                 await db.usuarios.delete(id);
+                if (cloudSyncEnabled && firestoreDb) {
+                    await firestoreDb.collection('finanzas_users').doc(currentUser.username).delete().catch(() => {});
+                }
                 await renderAdminPanel();
                 lucide.createIcons();
             }
@@ -795,3 +1379,5 @@
             }
         }
     </script>
+</body>
+</html>
