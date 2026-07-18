@@ -402,12 +402,13 @@
     <!-- LOGICA DE LA APLICACIÓN -->
     <script>
         window.FIREBASE_CONFIG = window.FIREBASE_CONFIG || {
-            apiKey: "TU_API_KEY",
-            authDomain: "TU_PROJECT_ID.firebaseapp.com",
-            projectId: "TU_PROJECT_ID",
-            storageBucket: "TU_PROJECT_ID.appspot.com",
-            messagingSenderId: "TU_MESSAGING_SENDER_ID",
-            appId: "TU_APP_ID"
+            apiKey: "AIzaSyA94Q9d6si6jTxfNYohs1dr5zPRoxWzopk",
+            authDomain: "gestionesonlineve.firebaseapp.com",
+            projectId: "gestionesonlineve",
+            storageBucket: "gestionesonlineve.firebasestorage.app",
+            messagingSenderId: "731768078629",
+            appId: "1:731768078629:web:c379d28a318c73dc64dacc",
+            measurementId: "G-NCB5ZYGRXC"
         };
 
         // --- 1. CONFIGURACIÓN DE LA BASE DE DATOS LOCAL (DEXIE) ---
@@ -457,6 +458,14 @@
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
             });
+        }
+
+        function isFirebaseConfigValid(config) {
+            if (!config || typeof config !== 'object') return false;
+            const invalidValues = ['TU_API_KEY', 'TU_PROJECT_ID', 'TU_MESSAGING_SENDER_ID', 'TU_APP_ID', 'your-project-id', 'YOUR_PROJECT_ID', 'YOUR_API_KEY', 'YOUR_APP_ID'];
+            return config.apiKey && !invalidValues.includes(config.apiKey)
+                && config.projectId && !invalidValues.includes(config.projectId)
+                && config.appId && !invalidValues.includes(config.appId);
         }
 
         function updateCalculator() {
@@ -510,7 +519,7 @@
         async function initializeCloudSync() {
             try {
                 const config = window.FIREBASE_CONFIG || null;
-                if (!config || !config.projectId || config.projectId === 'your-project-id') {
+                if (!isFirebaseConfigValid(config)) {
                     cloudSyncEnabled = false;
                     return;
                 }
@@ -670,8 +679,10 @@
                 const dbUser = await db.usuarios.get({ username: user.username });
                 if (dbUser) {
                     currentUser = dbUser;
-                    await hydrateCurrentUserFromCloud(currentUser);
                     showDashboard();
+                    if (cloudSyncEnabled) {
+                        hydrateCurrentUserFromCloud(currentUser).catch(() => {});
+                    }
                     return;
                 }
             }
@@ -747,10 +758,12 @@
 
                     if (matchedUser) {
                         currentUser = matchedUser;
-                        await hydrateCurrentUserFromCloud(currentUser);
                         localStorage.setItem('activeUserSession', JSON.stringify({ username }));
                         document.getElementById('auth-form').reset();
                         showDashboard();
+                        if (cloudSyncEnabled) {
+                            hydrateCurrentUserFromCloud(currentUser).catch(() => {});
+                        }
                     } else {
                         alert("Las credenciales introducidas no coinciden o no existen.");
                     }
@@ -792,9 +805,18 @@
             // Envío de Transacción manual
             document.getElementById('tx-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
+                if (!currentUser) {
+                    alert('Debes iniciar sesión para registrar una transacción.');
+                    return;
+                }
                 const monto = parseFloat(document.getElementById('tx-monto').value);
                 const moneda = document.getElementById('tx-moneda').value;
                 const descripcion = document.getElementById('tx-descripcion').value.trim();
+
+                if (!descripcion || isNaN(monto) || monto <= 0) {
+                    alert('Introduce una descripción válida y un monto mayor a 0.');
+                    return;
+                }
 
                 await db.transacciones.add({
                     fecha: Date.now(),
@@ -805,7 +827,7 @@
                     userId: currentUser.id
                 });
 
-                await syncCurrentUserDataToCloud();
+                syncCurrentUserDataToCloud().catch(() => {});
                 document.getElementById('tx-form').reset();
                 setTxType('ingreso');
                 await updateBalancesAndDashboards();
@@ -818,9 +840,18 @@
             // Envío de Deuda manual
             document.getElementById('debt-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
+                if (!currentUser) {
+                    alert('Debes iniciar sesión para registrar una cuenta.');
+                    return;
+                }
                 const persona = document.getElementById('debt-person').value.trim();
                 const concepto = document.getElementById('debt-concept').value.trim();
                 const monto = parseFloat(document.getElementById('debt-amount').value);
+
+                if (!persona || !concepto || isNaN(monto) || monto <= 0) {
+                    alert('Completa todos los campos correctamente y agrega un monto mayor a 0.');
+                    return;
+                }
 
                 await db.deudas.add({
                     tipo: currentDebtType,
@@ -832,7 +863,7 @@
                     userId: currentUser.id
                 });
 
-                await syncCurrentUserDataToCloud();
+                syncCurrentUserDataToCloud().catch(() => {});
                 document.getElementById('debt-form').reset();
                 setDebtType('cobrar');
                 await updateBalancesAndDashboards();
@@ -841,11 +872,19 @@
             // Envío de Financiamiento (Cashea)
             document.getElementById('purchase-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
+                if (!currentUser) {
+                    alert('Debes iniciar sesión para registrar un financiamiento.');
+                    return;
+                }
                 const item = document.getElementById('pur-item').value.trim();
                 const total = parseFloat(document.getElementById('pur-total').value);
                 const downpayment = parseFloat(document.getElementById('pur-downpayment').value);
                 const totalInstallments = parseInt(document.getElementById('pur-installments').value);
 
+                if (!item || isNaN(total) || total <= 0 || isNaN(downpayment) || downpayment < 0 || isNaN(totalInstallments) || totalInstallments <= 0) {
+                    alert('Completa todos los campos del financiamiento correctamente.');
+                    return;
+                }
                 if (downpayment >= total) {
                     alert("La cuota inicial no puede ser igual o mayor al costo total del artículo.");
                     return;
@@ -878,7 +917,7 @@
                     userId: currentUser.id
                 });
 
-                await syncCurrentUserDataToCloud();
+                syncCurrentUserDataToCloud().catch(() => {});
 
                 // Registrar de forma automática la inicial como un egreso de Caja USD
                 await db.transacciones.add({
@@ -956,7 +995,7 @@
                             descripcion: `Abono Cuota N°${inst.installmentNumber} de: ${purchase.item}`,
                             userId: currentUser.id
                         });
-                        await syncCurrentUserDataToCloud();
+                        syncCurrentUserDataToCloud().catch(() => {});
                     }
                 } else if (targetType === 'deuda') {
                     const debt = await db.deudas.get(targetId);
@@ -984,7 +1023,7 @@
                             descripcion: `${descPrefix}: ${debt.concepto} (${debt.persona})`,
                             userId: currentUser.id
                         });
-                        await syncCurrentUserDataToCloud();
+                        syncCurrentUserDataToCloud().catch(() => {});
                     }
                 }
 
