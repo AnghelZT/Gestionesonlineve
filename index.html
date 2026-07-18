@@ -870,20 +870,22 @@
                 const monto = parseFloat(document.getElementById('tx-monto').value);
                 const moneda = document.getElementById('tx-moneda').value;
                 const descripcion = document.getElementById('tx-descripcion').value.trim();
+                const txDateValue = document.getElementById('tx-date').value;
+                const txTimestamp = txDateValue ? new Date(`${txDateValue}T12:00:00`).getTime() : Date.now();
 
                 if (!descripcion || isNaN(monto) || monto <= 0) {
                     alert('Introduce una descripción válida y un monto mayor a 0.');
                     return;
                 }
 
-                    await db.transacciones.add({
-                        fecha: txTimestamp,
-                        tipo: currentTxType,
-                        monto,
-                        moneda,
-                        descripcion,
-                        userId: currentUser.id
-                    });
+                await db.transacciones.add({
+                    fecha: txTimestamp,
+                    tipo: currentTxType,
+                    monto,
+                    moneda,
+                    descripcion,
+                    userId: currentUser.id
+                });
 
                 syncCurrentUserDataToCloud().catch(() => {});
                 document.getElementById('tx-form').reset();
