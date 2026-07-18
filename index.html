@@ -382,6 +382,10 @@
                     <input type="number" id="modal-pay-amount" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="0.00">
                 </div>
                 <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">Fecha del Pago</label>
+                    <input type="date" id="modal-pay-date" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
                     <label class="block text-xs font-semibold text-slate-400 mb-1.5">Método / Moneda de Pago</label>
                     <select id="modal-pay-method" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500">
                         <option value="USD">Divisas (Dólares / USDT) - Se resta de Caja USD</option>
@@ -962,6 +966,7 @@
                 const instIdx = parseInt(document.getElementById('modal-installment-idx').value);
                 const payAmount = parseFloat(modalPayAmountInput.value);
                 const payMethod = modalPayMethodSelect.value;
+                const payDate = document.getElementById('modal-pay-date').value || new Date().toISOString().split('T')[0];
 
                 if (targetType === 'cashea') {
                     const purchase = await db.compras.get(targetId);
@@ -988,7 +993,7 @@
 
                         // Registrar transacción de egreso según el método de pago seleccionado
                         await db.transacciones.add({
-                            fecha: Date.now(),
+                            fecha: new Date(`${payDate}T12:00:00`).getTime(),
                             tipo: 'egreso',
                             monto: payMethod === 'VES' ? (payAmount * bcvRate) : payAmount,
                             moneda: payMethod,
@@ -1016,7 +1021,7 @@
                         const descPrefix = debt.tipo === 'cobrar' ? 'Cobro recibido' : 'Pago realizado';
 
                         await db.transacciones.add({
-                            fecha: Date.now(),
+                            fecha: new Date(`${payDate}T12:00:00`).getTime(),
                             tipo: txType,
                             monto: payMethod === 'VES' ? (payAmount * bcvRate) : payAmount,
                             moneda: payMethod,
@@ -1368,6 +1373,7 @@
 
             document.getElementById('payment-modal').classList.remove('hidden');
             document.getElementById('modal-pay-method').value = 'USD';
+            document.getElementById('modal-pay-date').value = new Date().toISOString().split('T')[0];
             document.getElementById('modal-conversion-notice').classList.add('hidden');
         }
 
