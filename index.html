@@ -255,13 +255,17 @@
                                     <input type="number" id="pur-downpayment" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="Ej. 60.00">
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">N° de Cuotas</label>
-                                    <select id="pur-installments" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500">
-                                        <option value="3">3 Cuotas</option>
-                                        <option value="4">4 Cuotas</option>
-                                        <option value="6">6 Cuotas</option>
-                                    </select>
+                                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">Fecha inicial</label>
+                                    <input type="date" id="pur-first-payment-date" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500">
                                 </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1.5">N° de Cuotas</label>
+                                <select id="pur-installments" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500">
+                                    <option value="3">3 Cuotas</option>
+                                    <option value="4">4 Cuotas</option>
+                                    <option value="6">6 Cuotas</option>
+                                </select>
                             </div>
                             <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition">Dividir & Registrar</button>
                         </form>
@@ -894,16 +898,22 @@
                     return;
                 }
 
+                const firstPaymentDateValue = document.getElementById('pur-first-payment-date').value;
+                const firstPaymentTimestamp = new Date(`${firstPaymentDateValue}T12:00:00`).getTime();
+                if (!firstPaymentDateValue || isNaN(firstPaymentTimestamp)) {
+                    alert('Selecciona una fecha válida para la inicial.');
+                    return;
+                }
+
                 // Cálculo de las cuotas
                 const remaining = total - downpayment;
                 const installmentAmount = Math.round((remaining / totalInstallments) * 100) / 100;
                 
                 const installments = [];
-                const now = Date.now();
                 for (let i = 1; i <= totalInstallments; i++) {
                     installments.push({
                         installmentNumber: i,
-                        dueDate: now + (i * 14 * 24 * 60 * 60 * 1000), // Cada 14 días
+                        dueDate: firstPaymentTimestamp + (i * 14 * 24 * 60 * 60 * 1000), // Cada 14 días desde la fecha inicial
                         amount: installmentAmount,
                         status: 'pendiente',
                         paidAmount: 0
@@ -912,6 +922,27 @@
 
                 // Guardar la compra
                 await db.compras.add({
+                    item,
+                    total,
+                    downpayment,
+                    totalInstallments,
+                    initialPaymentDate: firstPaymentTimestamp,
+                    installments,
+                    status: 'pendiente',
+                    userId: currentUser.id
+                });
+
+                syncCurrentUserDataToCloud().catch(() => {});
+
+                // Registrar de forma automática la inicial como un egreso de Caja USD
+                await db.transacciones.add({
+                    fecha: firstPaymentTimestamp,
+                    tipo: 'egreso',
+                    monto: downpayment,
+                    moneda: 'USD',
+                    descripcion: `Inicial financiamiento: ${item}`,
+                    userId: currentUser.id
+                });
                     item,
                     total,
                     downpayment,
