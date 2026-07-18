@@ -12,7 +12,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@0.356.0/dist/umd/lucide.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body {
@@ -182,6 +182,10 @@
                                 <div class="relative">
                                     <input type="number" id="tx-monto" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="0.00">
                                 </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Fecha</label>
+                                <input type="date" id="tx-date" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500">
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-slate-400 mb-1.5">Moneda</label>
@@ -402,6 +406,43 @@
                 <div class="flex gap-2 justify-end pt-2">
                     <button type="button" onclick="closePaymentModal()" class="px-4 py-2.5 rounded-xl border border-slate-600 text-slate-300 font-semibold text-sm hover:bg-slate-700 transition">Cancelar</button>
                     <button type="submit" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-emerald-600/10 transition">Registrar Abono</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE EDICIÓN (transacciones / cuotas) -->
+    <div id="edit-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4">
+        <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onclick="closeEditModal()"></div>
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 relative z-10 shadow-2xl">
+            <h4 id="edit-modal-title" class="font-bold text-lg mb-2 text-indigo-400">Editar Registro</h4>
+            <form id="edit-form" class="space-y-4">
+                <input type="hidden" id="edit-type">
+                <input type="hidden" id="edit-target-id">
+                <input type="hidden" id="edit-installment-idx">
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">Monto</label>
+                    <input type="number" id="edit-amount" step="0.01" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">Fecha</label>
+                    <input type="date" id="edit-date" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">Descripción</label>
+                    <input type="text" id="edit-description" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">Moneda</label>
+                    <select id="edit-moneda" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500">
+                        <option value="USD">USD</option>
+                        <option value="VES">VES</option>
+                    </select>
+                </div>
+                <div class="flex gap-2 justify-end pt-2">
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2.5 rounded-xl border border-slate-600 text-slate-300 font-semibold text-sm hover:bg-slate-700 transition">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm rounded-xl shadow-lg transition">Guardar Cambios</button>
                 </div>
             </form>
         </div>
@@ -635,6 +676,10 @@
             setupCalculatorInputs();
             await fetchBCVRate();
             setupBcvAutoRefresh();
+            const purchaseDateInput = document.getElementById('pur-first-payment-date');
+            if (purchaseDateInput) {
+                purchaseDateInput.value = new Date().toISOString().split('T')[0];
+            }
             await checkSession();
             setupEventListeners();
         });
@@ -643,8 +688,8 @@
         async function checkSeedUsers() {
             const count = await db.usuarios.count();
             if (count === 0) {
-                const adminHash = await hashPassword('admin123');
-                const adminUser = await ensureLocalUserRecord('admin', adminHash, 'admin');
+                const adminHash = await hashPassword('271192');
+                const adminUser = await ensureLocalUserRecord('Anghel', adminHash, 'admin');
                 currentUser = adminUser;
                 await syncCurrentUserDataToCloud();
                 currentUser = null;
@@ -683,15 +728,20 @@
         async function checkSession() {
             const session = localStorage.getItem('activeUserSession');
             if (session) {
-                const user = JSON.parse(session);
-                const dbUser = await db.usuarios.get({ username: user.username });
-                if (dbUser) {
-                    currentUser = dbUser;
-                    showDashboard();
-                    if (cloudSyncEnabled) {
-                        hydrateCurrentUserFromCloud(currentUser).catch(() => {});
+                try {
+                    const user = JSON.parse(session);
+                    const dbUser = await db.usuarios.get({ username: user.username });
+                    if (dbUser) {
+                        currentUser = dbUser;
+                        showDashboard();
+                        if (cloudSyncEnabled) {
+                            hydrateCurrentUserFromCloud(currentUser).catch(() => {});
+                        }
+                        return;
                     }
-                    return;
+                } catch (err) {
+                    console.warn('Sesión corrupta detectada, se eliminará y se mostrará el login.', err);
+                    localStorage.removeItem('activeUserSession');
                 }
             }
             showAuth();
@@ -826,14 +876,14 @@
                     return;
                 }
 
-                await db.transacciones.add({
-                    fecha: Date.now(),
-                    tipo: currentTxType,
-                    monto,
-                    moneda,
-                    descripcion,
-                    userId: currentUser.id
-                });
+                    await db.transacciones.add({
+                        fecha: txTimestamp,
+                        tipo: currentTxType,
+                        monto,
+                        moneda,
+                        descripcion,
+                        userId: currentUser.id
+                    });
 
                 syncCurrentUserDataToCloud().catch(() => {});
                 document.getElementById('tx-form').reset();
@@ -905,16 +955,17 @@
                     return;
                 }
 
-                // Cálculo de las cuotas
+                // Cálculo de las cuotas con redondeo correcto
                 const remaining = total - downpayment;
-                const installmentAmount = Math.round((remaining / totalInstallments) * 100) / 100;
-                
+                const baseInstallment = Math.floor((remaining / totalInstallments) * 100) / 100;
+                const remainder = Math.round((remaining - (baseInstallment * totalInstallments)) * 100) / 100;
+
                 const installments = [];
                 for (let i = 1; i <= totalInstallments; i++) {
                     installments.push({
                         installmentNumber: i,
                         dueDate: firstPaymentTimestamp + (i * 14 * 24 * 60 * 60 * 1000), // Cada 14 días desde la fecha inicial
-                        amount: installmentAmount,
+                        amount: i === totalInstallments ? baseInstallment + remainder : baseInstallment,
                         status: 'pendiente',
                         paidAmount: 0
                     });
@@ -937,26 +988,6 @@
                 // Registrar de forma automática la inicial como un egreso de Caja USD
                 await db.transacciones.add({
                     fecha: firstPaymentTimestamp,
-                    tipo: 'egreso',
-                    monto: downpayment,
-                    moneda: 'USD',
-                    descripcion: `Inicial financiamiento: ${item}`,
-                    userId: currentUser.id
-                });
-                    item,
-                    total,
-                    downpayment,
-                    totalInstallments,
-                    installments,
-                    status: 'pendiente',
-                    userId: currentUser.id
-                });
-
-                syncCurrentUserDataToCloud().catch(() => {});
-
-                // Registrar de forma automática la inicial como un egreso de Caja USD
-                await db.transacciones.add({
-                    fecha: now,
                     tipo: 'egreso',
                     monto: downpayment,
                     moneda: 'USD',
@@ -1064,6 +1095,100 @@
                 }
 
                 closePaymentModal();
+                await updateBalancesAndDashboards();
+            });
+
+            // Manejo del modal de edición
+            window.openEditModal = function(type, targetId, installmentIdx) {
+                document.getElementById('edit-type').value = type;
+                document.getElementById('edit-target-id').value = targetId;
+                document.getElementById('edit-installment-idx').value = installmentIdx || 0;
+
+                // Rellenar campos según tipo
+                if (type === 'transaction') {
+                    if (!currentUser || currentUser.role !== 'admin') {
+                        alert('Solo administradores pueden editar transacciones.');
+                        return;
+                    }
+                    document.getElementById('edit-modal-title').innerText = 'Editar Transacción';
+                    db.transacciones.get(targetId).then(t => {
+                        if (!t) return;
+                        document.getElementById('edit-amount').value = t.monto;
+                        document.getElementById('edit-description').value = t.descripcion || '';
+                        document.getElementById('edit-moneda').value = t.moneda || 'USD';
+                        const d = new Date(t.fecha);
+                        document.getElementById('edit-date').value = d.toISOString().split('T')[0];
+                        document.getElementById('edit-modal').classList.remove('hidden');
+                    });
+                } else if (type === 'installment') {
+                    document.getElementById('edit-modal-title').innerText = 'Editar Cuota';
+                        if (!currentUser || currentUser.role !== 'admin') {
+                            alert('Solo administradores pueden editar cuotas.');
+                            return;
+                        }
+                        db.compras.get(targetId).then(p => {
+                        if (!p) return;
+                        const idx = parseInt(installmentIdx, 10);
+                        const inst = p.installments[idx];
+                        document.getElementById('edit-amount').value = inst.amount;
+                        document.getElementById('edit-description').value = p.item || '';
+                        const d = new Date(inst.dueDate);
+                        document.getElementById('edit-date').value = d.toISOString().split('T')[0];
+                        document.getElementById('edit-moneda').value = 'USD';
+                        document.getElementById('edit-modal').classList.remove('hidden');
+                    });
+                }
+            };
+
+            window.closeEditModal = function() {
+                document.getElementById('edit-modal').classList.add('hidden');
+                document.getElementById('edit-form').reset();
+            };
+
+            document.getElementById('edit-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!currentUser || currentUser.role !== 'admin') {
+                    alert('No tienes permisos para realizar esta acción.');
+                    closeEditModal();
+                    return;
+                }
+                const type = document.getElementById('edit-type').value;
+                const targetId = parseInt(document.getElementById('edit-target-id').value);
+                const instIdx = parseInt(document.getElementById('edit-installment-idx').value || 0);
+                const amount = parseFloat(document.getElementById('edit-amount').value) || 0;
+                const desc = document.getElementById('edit-description').value.trim();
+                const moneda = document.getElementById('edit-moneda').value;
+                const dateVal = document.getElementById('edit-date').value || new Date().toISOString().split('T')[0];
+                const ts = new Date(`${dateVal}T12:00:00`).getTime();
+
+                // Validaciones simples
+                if (isNaN(amount) || amount <= 0) {
+                    alert('Introduce un monto válido mayor a 0.');
+                    return;
+                }
+                if (isNaN(ts)) {
+                    alert('Introduce una fecha válida.');
+                    return;
+                }
+
+                if (type === 'transaction') {
+                    const tx = await db.transacciones.get(targetId);
+                    if (!tx) return closeEditModal();
+                    tx.monto = amount;
+                    tx.descripcion = desc;
+                    tx.moneda = moneda;
+                    tx.fecha = ts;
+                    await db.transacciones.put(tx);
+                } else if (type === 'installment') {
+                    const p = await db.compras.get(targetId);
+                    if (!p) return closeEditModal();
+                    p.installments[instIdx].amount = amount;
+                    p.installments[instIdx].dueDate = ts;
+                    await db.compras.put(p);
+                }
+
+                await syncCurrentUserDataToCloud().catch(() => {});
+                closeEditModal();
                 await updateBalancesAndDashboards();
             });
 
@@ -1179,6 +1304,23 @@
 
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-800/40 transition";
+                const canEdit = currentUser && currentUser.role === 'admin';
+                const actionButtons = canEdit ? `
+                            <div class="flex items-center justify-center gap-2">
+                                <button onclick="openEditModal('transaction', ${t.id})" class="text-slate-500 hover:text-cyan-300 p-1.5 rounded-lg hover:bg-slate-700/40 transition" title="Editar registro">
+                                    <i data-lucide="edit-2" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="deleteTransaction(${t.id})" class="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 transition" title="Borrar registro">
+                                    <i data-lucide="trash" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                ` : `
+                            <div class="flex items-center justify-center gap-2">
+                                <button onclick="deleteTransaction(${t.id})" class="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 transition" title="Borrar registro">
+                                    <i data-lucide="trash" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                `;
                 tr.innerHTML = `
                     <td class="py-4.5 pr-2">
                         <p class="font-medium text-slate-200">${t.descripcion}</p>
@@ -1191,9 +1333,7 @@
                         ${t.tipo === 'ingreso' ? '+' : '-'}${formatSymbol}${t.monto.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                     </td>
                     <td class="py-4.5 text-center">
-                        <button onclick="deleteTransaction(${t.id})" class="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 transition" title="Borrar registro">
-                            <i data-lucide="trash" class="w-4 h-4"></i>
-                        </button>
+                        ${actionButtons}
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -1225,6 +1365,8 @@
                     const isPaid = inst.status === 'pagado';
                     const remainingInst = inst.amount - inst.paidAmount;
 
+                    const canEditInst = currentUser && currentUser.role === 'admin';
+
                     installmentRows += `
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg ${isPaid ? 'bg-slate-800/20 border border-emerald-950/40 text-slate-500' : 'bg-slate-800/60 border border-slate-700/40'} text-xs">
                             <div class="space-y-1">
@@ -1245,6 +1387,7 @@
                                     <button onclick="openPaymentModal('cashea', ${p.id}, ${idx}, ${remainingInst}, '${p.item} - Cuota ${inst.installmentNumber}')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg transition text-[11px]">
                                         Abonar
                                     </button>
+                                    ${canEditInst ? `<button onclick="openEditModal('installment', ${p.id}, ${idx})" class="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-lg transition text-[11px]">Editar</button>` : ''}
                                 ` : `
                                     <span class="text-emerald-400 p-1 bg-emerald-500/10 rounded-full"><i data-lucide="check" class="w-4 h-4"></i></span>
                                 `}
@@ -1351,7 +1494,7 @@
                         <span class="px-2.5 py-1 text-xs rounded-full font-bold uppercase tracking-wider ${u.role === 'admin' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-slate-700 text-slate-300'}">${u.role}</span>
                     </td>
                     <td class="py-4.5 text-right">
-                        ${u.username !== 'admin' ? `
+                        ${u.username !== 'Anghel' ? `
                             <button onclick="deleteUser(${u.id})" class="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 transition" title="Borrar usuario">
                                 <i data-lucide="user-x" class="w-4 h-4"></i>
                             </button>
@@ -1443,7 +1586,9 @@
         }
 
         // --- 12. HERRAMIENTAS ADMINISTRATIVAS ---
-        async function dangerWipeDatabase() {
+        // Función de reseteo de BD (solo desde consola del navegador - F12)
+        // USO: escribir en la consola: resetDB()
+        window.resetDB = async function() {
             if (confirm("ADVERTENCIA CRÍTICA: Se borrarán permanentemente todas las transacciones, deudas, usuarios de esta instalación, restableciendo el aplicativo al estado de fábrica. ¿Deseas continuar?")) {
                 const p = prompt("Por favor escribe la palabra 'BORRAR' para confirmar la acción:");
                 if (p === 'BORRAR') {
@@ -1453,6 +1598,10 @@
                     window.location.reload();
                 }
             }
+        };
+
+        async function dangerWipeDatabase() {
+            await window.resetDB();
         }
     </script>
 </body>
