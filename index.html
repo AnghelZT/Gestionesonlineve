@@ -11,6 +11,8 @@
     <!-- Firebase para sincronización en la nube -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <!-- Supabase JS Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@0.356.0/dist/umd/lucide.min.js"></script>
     <style>
@@ -1098,6 +1100,7 @@
                     }
                 }
 
+                // Guardado local (IndexedDB)
                 await db.transacciones.add({
                     fecha: txTimestamp,
                     tipo: currentTxType,
@@ -1107,6 +1110,30 @@
                     referencia,
                     userId: currentUser.id
                 });
+
+                // ==========================================
+                // ENVÍO DIRECTO A LA NUEVA TABLA DE SUPABASE
+                // ==========================================
+                const { data: sData, error: sError } = await supabase
+                    .from('transacciones') // Tu nueva tabla limpia
+                    .insert([
+                        { 
+                            monto: monto,
+                            moneda: moneda,
+                            descripcion: descripcion,
+                            referencia: referencia,
+                            tipo: currentTxType
+                        }
+                    ]);
+
+                if (sError) {
+                    // Si Supabase rechaza el envío, verás el motivo exacto en la consola
+                    console.error('Error crítico en Supabase:', sError.message);
+                    alert('Error al guardar en la nube: ' + sError.message);
+                } else {
+                    console.log('¡Transacción guardada en Supabase con éxito!');
+                }
+                // ==========================================
 
                 syncCurrentUserDataToCloud().catch(() => {});
                 document.getElementById('tx-form').reset();
@@ -1938,116 +1965,6 @@
                 list.appendChild(card);
             });
         }
-
-        async function renderAdminPanel() {
-            if (!currentUser || currentUser.role !== 'admin') return;
-            const tbody = document.getElementById('users-table-body');
-            if (!tbody) return;
-            tbody.innerHTML = '';
-
-            const users = await db.usuarios.toArray();
-            users.forEach(u => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-800/40 transition";
-                const isMe = u.id === currentUser.id;
-
-                tr.innerHTML = `
-                    <td class="py-4 font-medium text-slate-200">${u.username} ${u.nombre ? `(${u.nombre})` : ''}</td>
-                    <td class="py-4">
-                        <span class="px-2.5 py-1 text-xs rounded-full font-bold uppercase tracking-wider ${u.role === 'admin' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-slate-700 text-slate-300'}">
-                            ${u.role}
-                        </span>
-                    </td>
-                    <td class="py-4 text-right">
-                        ${!isMe ? `
-                            <button type="button" onclick="deleteUser(${u.id})" class="px-3 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs font-semibold transition">
-                                Eliminar Usuario
-                            </button>
-                        ` : `<span class="text-xs text-slate-500 italic">Sesión Actual</span>`}
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        async function deleteTransaction(id) {
-            if (!confirm('¿Estás seguro de eliminar este registro?')) return;
-            await db.transacciones.delete(id);
-            syncCurrentUserDataToCloud().catch(() => {});
-            await updateBalancesAndDashboards();
-        }
-
-        async function deleteDebt(id) {
-            if (!confirm('¿Estás seguro de eliminar esta cuenta?')) return;
-            await db.deudas.delete(id);
-            syncCurrentUserDataToCloud().catch(() => {});
-            await updateBalancesAndDashboards();
-        }
-
-        async function deleteUser(id) {
-            if (!confirm('¿Eliminar este usuario y todos sus datos asociados?')) return;
-            const u = await db.usuarios.get(id);
-            if (u) {
-                await db.transacciones.where('userId').equals(id).delete();
-                await db.compras.where('userId').equals(id).delete();
-                await db.deudas.where('userId').equals(id).delete();
-                await db.usuarios.delete(id);
-                if (cloudSyncEnabled && firestoreDb) {
-                    await firestoreDb.collection('finanzas_users').doc(u.username).delete().catch(() => {});
-                }
-            }
-            await updateBalancesAndDashboards();
-        }
-
-        async function dangerWipeDatabase() {
-            if (!confirm('¡ATENCIÓN! Esto borrará todas las transacciones, deudas e historiales de tu base de datos local. ¿Continuar?')) return;
-            await db.transaction('rw', db.transacciones, db.compras, db.deudas, db.configuracion, async () => {
-                await db.transacciones.clear();
-                await db.compras.clear();
-                await db.deudas.clear();
-                await db.configuracion.clear();
-            });
-            syncCurrentUserDataToCloud().catch(() => {});
-            await updateBalancesAndDashboards();
-            alert('Base de datos restablecida con éxito.');
-        }
-
-        function exportData() {
-            db.transacciones.toArray().then(txs => {
-                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(txs, null, 2));
-                const downloadAnchor = document.createElement('a');
-                downloadAnchor.setAttribute("href", dataStr);
-                downloadAnchor.setAttribute("download", `respaldo_transacciones_${Date.now()}.json`);
-                document.body.appendChild(downloadAnchor);
-                downloadAnchor.click();
-                downloadAnchor.remove();
-            });
-        }
-
-        window.openPaymentModal = function(type, targetId, installmentIdx, maxAmount, subtitleText) {
-            document.getElementById('modal-target-type').value = type;
-            document.getElementById('modal-target-id').value = targetId;
-            document.getElementById('modal-installment-idx').value = installmentIdx !== undefined ? installmentIdx : 0;
-            document.getElementById('modal-max-amount').innerText = `$${formatNumber(maxAmount)}`;
-            document.getElementById('modal-concept-subtitle').innerText = subtitleText;
-            document.getElementById('modal-pay-amount').value = maxAmount.toFixed(2);
-            document.getElementById('modal-pay-date').value = new Date().toISOString().split('T')[0];
-            document.getElementById('modal-pay-referencia').value = '';
-            document.getElementById('payment-modal').classList.remove('hidden');
-        };
-
-        window.closePaymentModal = function() {
-            document.getElementById('payment-modal').classList.add('hidden');
-            document.getElementById('modal-payment-form').reset();
-            document.getElementById('modal-conversion-notice').classList.add('hidden');
-        };
-
-        window.fillModalMaxAmount = function() {
-            const maxStr = document.getElementById('modal-max-amount').innerText.replace('$', '').replace(/,/g, '');
-            document.getElementById('modal-pay-amount').value = parseFloat(maxStr) || 0;
-            const event = new Event('input');
-            document.getElementById('modal-pay-amount').dispatchEvent(event);
-        };
     </script>
 </body>
 </html>
