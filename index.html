@@ -549,7 +549,6 @@
             const icon = document.getElementById(`${prefix}-icon-${id}`);
             const isHidden = content.classList.contains('hidden');
 
-            // Cierra todos los demás elementos del mismo tipo
             document.querySelectorAll(`.${prefix}-accordion-content`).forEach(el => el.classList.add('hidden'));
             document.querySelectorAll(`.${prefix}-accordion-icon`).forEach(el => el.style.transform = 'rotate(0deg)');
 
@@ -1039,7 +1038,7 @@
                     const allTx = await db.transacciones.toArray();
                     const exists = allTx.some(t => t.referencia && t.referencia.trim().toLowerCase() === referencia.toLowerCase());
                     if (exists) {
-                        alert(`¡Advertencia! La referencia "${referencia}" ya está duplicada y no se permite su registro.`);
+                        alert(`¡Advertencia! La referencia "${referencia}" ya está duplicada y não se permite su registro.`);
                         return;
                     }
                 }
@@ -2003,10 +2002,8 @@
                     await db.deudas.where('userId').equals(currentUser.id).delete();
                     await syncCurrentUserDataToCloud();
                     await updateBalancesAndDashboards();
-                    alert("Base de datos restablecida correctamente.");
+                    alert("Base de datos restablecida exitosamente.");
                 }
-            } else {
-                alert("Solo el Administrador puede realizar un restablecimiento de datos.");
             }
         }
     </script>
