@@ -1038,7 +1038,7 @@
                     const allTx = await db.transacciones.toArray();
                     const exists = allTx.some(t => t.referencia && t.referencia.trim().toLowerCase() === referencia.toLowerCase());
                     if (exists) {
-                        alert(`¡Advertencia! La referencia "${referencia}" ya está duplicada y não se permite su registro.`);
+                        alert(`¡Advertencia! La referencia "${referencia}" ya está duplicada y no se permite su registro.`);
                         return;
                     }
                 }
@@ -1885,84 +1885,98 @@
         }
 
         async function renderAdminPanel() {
-            if (currentUser.role !== 'admin') return;
-
-            const tbody = document.getElementById('users-table-body');
-            tbody.innerHTML = '';
+            if (!currentUser || currentUser.role !== 'admin') return;
+            const usersTbody = document.getElementById('users-table-body');
+            if (!usersTbody) return;
+            usersTbody.innerHTML = '';
 
             const users = await db.usuarios.toArray();
+            if (users.length === 0) {
+                usersTbody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-500">No hay usuarios registrados.</td></tr>`;
+                return;
+            }
+
             users.forEach(u => {
                 const tr = document.createElement('tr');
-                tr.className = "border-b border-slate-800 hover:bg-slate-800/40 transition";
+                tr.className = "hover:bg-slate-800/40 transition";
+                const isSelf = u.username === currentUser.username;
                 tr.innerHTML = `
-                    <td class="py-4.5 font-medium text-slate-200">${u.username}</td>
-                    <td class="py-4.5">
-                        <span class="px-2.5 py-1 text-xs rounded-full font-bold uppercase tracking-wider ${u.role === 'admin' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-slate-700 text-slate-300'}">${u.role}</span>
-                    </td>
-                    <td class="py-4.5 text-right">
-                        ${u.username !== 'Anghel' ? `
-                            <button type="button" onclick="deleteUser(${u.id})" class="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 transition" title="Borrar usuario">
-                                <i data-lucide="user-x" class="w-4 h-4"></i>
-                            </button>
-                        ` : '<span class="text-xs text-slate-500 italic pr-2">Protegido</span>'}
+                    <td class="py-3 font-medium text-slate-200">${u.username} ${isSelf ? '<span class="text-xs text-indigo-400 font-normal">(Tú)</span>' : ''}</td>
+                    <td class="py-3"><span class="px-2.5 py-1 text-xs rounded-full font-semibold ${u.role === 'admin' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-slate-700 text-slate-300'}">${u.role}</span></td>
+                    <td class="py-3 text-right">
+                        ${!isSelf ? `<button type="button" onclick="deleteUser(${u.id})" class="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 transition" title="Eliminar Usuario"><i data-lucide="trash" class="w-4 h-4"></i></button>` : '<span class="text-xs text-slate-500">-</span>'}
                     </td>
                 `;
-                tbody.appendChild(tr);
+                usersTbody.appendChild(tr);
             });
         }
 
         async function deleteTransaction(id) {
-            if (confirm("¿Estás seguro de que deseas eliminar este registro del historial? Esta acción alterará el cálculo del flujo de caja disponible.")) {
-                await db.transacciones.delete(id);
-                await syncCurrentUserDataToCloud();
-                await updateBalancesAndDashboards();
-            }
+            if (!confirm('¿Estás seguro de eliminar esta transacción?')) return;
+            await db.transacciones.delete(id);
+            await syncCurrentUserDataToCloud().catch(() => {});
+            await updateBalancesAndDashboards();
         }
 
         async function deleteDebt(id) {
-            if (confirm("¿Seguro que deseas eliminar esta cuenta del sistema?")) {
-                await db.deudas.delete(id);
-                await syncCurrentUserDataToCloud();
-                await updateBalancesAndDashboards();
-            }
+            if (!confirm('¿Estás seguro de eliminar esta cuenta?')) return;
+            await db.deudas.delete(id);
+            await syncCurrentUserDataToCloud().catch(() => {});
+            await updateBalancesAndDashboards();
         }
 
         async function deleteUser(id) {
-            if (confirm("¿Estás seguro de que deseas revocar los accesos de este usuario?")) {
-                const targetUser = await db.usuarios.get(id);
+            if (!confirm('¿Estás seguro de eliminar este usuario y sus datos asociados?')) return;
+            const user = await db.usuarios.get(id);
+            if (user) {
+                await db.transacciones.where('userId').equals(id).delete();
+                await db.compras.where('userId').equals(id).delete();
+                await db.deudas.where('userId').equals(id).delete();
                 await db.usuarios.delete(id);
-                if (cloudSyncEnabled && firestoreDb && targetUser) {
-                    await firestoreDb.collection('finanzas_users').doc(targetUser.username).delete().catch(() => {});
+                if (cloudSyncEnabled && firestoreDb) {
+                    await firestoreDb.collection('finanzas_users').doc(user.username).delete().catch(() => {});
                 }
-                await renderAdminPanel();
-                lucide.createIcons();
             }
+            await updateBalancesAndDashboards();
         }
 
-        function openPaymentModal(type, targetId, installmentIdx, maxAmount, subtitleText) {
+        async function dangerWipeDatabase() {
+            if (!confirm('⚠️ ADVERTENCIA: ¿Estás totalmente seguro de restablecer toda la base de datos local? Se borrará todo permanentemente.')) return;
+            await db.delete();
+            localStorage.removeItem('activeUserSession');
+            window.location.reload();
+        }
+
+        function exportData() {
+            db.transaction('r', db.transacciones, db.compras, db.deudas, db.usuarios, db.configuracion, async () => {
+                const transacciones = await db.transacciones.toArray();
+                const compras = await db.compras.toArray();
+                const deudas = await db.deudas.toArray();
+                const usuarios = await db.usuarios.toArray();
+                const configuracion = await db.configuracion.toArray();
+
+                const exportObj = { transacciones, compras, deudas, usuarios, configuracion, version: 1, exportedAt: new Date().toISOString() };
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj, null, 2));
+                const downloadAnchor = document.createElement('a');
+                downloadAnchor.setAttribute("href", dataStr);
+                downloadAnchor.setAttribute("download", `InterFinanzas_Backup_${new Date().toISOString().split('T')[0]}.json`);
+                document.body.appendChild(downloadAnchor);
+                downloadAnchor.click();
+                downloadAnchor.remove();
+            }).catch(err => {
+                alert('Error al exportar los datos: ' + err.message);
+            });
+        }
+
+        function openPaymentModal(type, targetId, installmentIdx, maxAmount, conceptText) {
             document.getElementById('modal-target-type').value = type;
             document.getElementById('modal-target-id').value = targetId;
-            document.getElementById('modal-installment-idx').value = installmentIdx;
+            document.getElementById('modal-installment-idx').value = installmentIdx !== undefined ? installmentIdx : 0;
             document.getElementById('modal-max-amount').innerText = `$${formatNumber(maxAmount)}`;
-            document.getElementById('modal-concept-subtitle').innerText = subtitleText;
-            
-            const payAmountInput = document.getElementById('modal-pay-amount');
-            payAmountInput.value = maxAmount.toFixed(2);
-            payAmountInput.max = maxAmount;
-
-            document.getElementById('payment-modal').classList.remove('hidden');
-            document.getElementById('modal-pay-method').value = 'USD';
-            document.getElementById('tipoDestinoPago').value = 'caja';
-            document.getElementById('modal-pay-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('modal-pay-amount').value = maxAmount.toFixed(2);
+            document.getElementById('modal-concept-subtitle').innerText = conceptText || 'Abonar saldo a la deuda activa';
             document.getElementById('modal-conversion-notice').classList.add('hidden');
-        }
-
-        function fillModalMaxAmount() {
-            const maxText = document.getElementById('modal-max-amount').innerText.replace('$', '').replace(/,/g, '');
-            const maxVal = parseFloat(maxText) || 0;
-            const input = document.getElementById('modal-pay-amount');
-            input.value = maxVal.toFixed(2);
-            input.dispatchEvent(new Event('input'));
+            document.getElementById('payment-modal').classList.remove('hidden');
         }
 
         function closePaymentModal() {
@@ -1970,41 +1984,9 @@
             document.getElementById('modal-payment-form').reset();
         }
 
-        async function exportData() {
-            if (!currentUser) return;
-            const txs = await db.transacciones.where('userId').equals(currentUser.id).toArray();
-            const compras = await db.compras.where('userId').equals(currentUser.id).toArray();
-            const deudas = await db.deudas.where('userId').equals(currentUser.id).toArray();
-
-            const dataObj = {
-                usuario: currentUser.username,
-                exportDate: new Date().toISOString(),
-                transacciones: txs,
-                compras: compras,
-                deudas: deudas
-            };
-
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataObj, null, 2));
-            const dlAnchorElem = document.createElement('a');
-            dlAnchorElem.setAttribute("href", dataStr);
-            dlAnchorElem.setAttribute("download", `InterFinanzas_${currentUser.username}_${new Date().toISOString().split('T')[0]}.json`);
-            document.body.appendChild(dlAnchorElem);
-            dlAnchorElem.click();
-            dlAnchorElem.remove();
-        }
-
-        async function dangerWipeDatabase() {
-            if (currentUser && currentUser.role === 'admin') {
-                const confirmation = prompt("ATENCIÓN: Estás a punto de borrar TODOS los registros de transacciones, deudas y financiamientos de este dispositivo. Escribe 'BORRAR' para confirmar:");
-                if (confirmation === 'BORRAR') {
-                    await db.transacciones.where('userId').equals(currentUser.id).delete();
-                    await db.compras.where('userId').equals(currentUser.id).delete();
-                    await db.deudas.where('userId').equals(currentUser.id).delete();
-                    await syncCurrentUserDataToCloud();
-                    await updateBalancesAndDashboards();
-                    alert("Base de datos restablecida exitosamente.");
-                }
-            }
+        function fillModalMaxAmount() {
+            const maxText = document.getElementById('modal-max-amount').innerText.replace('$', '').replace(/\./g, '').replace(',', '.');
+            document.getElementById('modal-pay-amount').value = parseFloat(maxText) || 0;
         }
     </script>
 </body>
