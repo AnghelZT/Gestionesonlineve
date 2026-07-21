@@ -543,6 +543,22 @@
         let firestoreDb = null;
         let cloudSyncEnabled = false;
 
+        // --- ACORDEÓN EXPANDIBLE / COLAPSABLE ---
+        window.toggleCardAccordion = function(prefix, id) {
+            const content = document.getElementById(`${prefix}-content-${id}`);
+            const icon = document.getElementById(`${prefix}-icon-${id}`);
+            const isHidden = content.classList.contains('hidden');
+
+            // Cierra todos los demás elementos del mismo tipo
+            document.querySelectorAll(`.${prefix}-accordion-content`).forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll(`.${prefix}-accordion-icon`).forEach(el => el.style.transform = 'rotate(0deg)');
+
+            if (isHidden) {
+                content.classList.remove('hidden');
+                if (icon) icon.style.transform = 'rotate(180deg)';
+            }
+        };
+
         function getCaracasDate(date = new Date()) {
             const formatter = new Intl.DateTimeFormat('en-CA', {
                 timeZone: 'America/Caracas',
@@ -1143,8 +1159,6 @@
                     userId: currentUser.id
                 });
 
-                // NOTA: Se ha removido el registro automático de la inicial en caja según lo solicitado.
-
                 await syncCurrentUserDataToCloud();
                 document.getElementById('purchase-form').reset();
                 await updateBalancesAndDashboards();
@@ -1695,7 +1709,7 @@
             const isFullyPaid = p.status === 'pagado';
 
             const card = document.createElement('div');
-            card.className = `bg-slate-900 border ${isFullyPaid ? 'border-emerald-500/40' : 'border-slate-700/60'} rounded-xl p-5 space-y-4 shadow-sm`;
+            card.className = `bg-slate-900 border ${isFullyPaid ? 'border-emerald-500/40' : 'border-slate-700/60'} rounded-xl p-5 space-y-4 shadow-sm transition`;
             
             let installmentRows = '';
             p.installments.forEach((inst, idx) => {
@@ -1740,27 +1754,32 @@
             });
 
             const editPurchaseBtn = isAdmin ? `
-                <button type="button" onclick="openEditModal('purchase', ${p.id})" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded-lg transition" title="Editar Financiamiento">
+                <button type="button" onclick="openEditModal('purchase', ${p.id}); event.stopPropagation();" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded-lg transition" title="Editar Financiamiento">
                     <i data-lucide="edit-2" class="w-4 h-4"></i>
                 </button>
             ` : '';
 
             const payTotalBtn = !isFullyPaid ? `
-                <button type="button" onclick="openPaymentModal('cashea_total', ${p.id}, -1, ${remainingGlobal}, '${p.item} - Deuda Total Restante')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition text-[11px] shadow-sm">
+                <button type="button" onclick="openPaymentModal('cashea_total', ${p.id}, -1, ${remainingGlobal}, '${p.item} - Deuda Total Restante'); event.stopPropagation();" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition text-[11px] shadow-sm">
                     Pagar Totalidad
                 </button>
             ` : `<span class="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded-lg border border-emerald-500/20">Pago Listo / Completo</span>`;
 
             card.innerHTML = `
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-800 pb-3">
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <h5 class="font-bold text-slate-100">${p.item}</h5>
-                            ${editPurchaseBtn}
+                <div onclick="toggleCardAccordion('purchase', ${p.id})" class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 cursor-pointer select-none">
+                    <div class="flex items-center gap-3">
+                        <div id="purchase-icon-${p.id}" class="purchase-accordion-icon text-slate-400 transition-transform duration-200">
+                            <i data-lucide="chevron-down" class="w-5 h-5"></i>
                         </div>
-                        <p class="text-xs text-slate-400">Total: $${formatNumber(p.total)} | Inicial: $${formatNumber(p.downpayment)}</p>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h5 class="font-bold text-slate-100">${p.item}</h5>
+                                ${editPurchaseBtn}
+                            </div>
+                            <p class="text-xs text-slate-400">Total: $${formatNumber(p.total)} | Inicial: $${formatNumber(p.downpayment)}</p>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end" onclick="event.stopPropagation()">
                         <div class="text-right">
                             <p class="text-xs text-slate-400">Deuda Restante</p>
                             <span class="font-bold text-amber-400">$${formatNumber(remainingGlobal)}</span>
@@ -1771,20 +1790,22 @@
                         </div>
                     </div>
                 </div>
-                
-                <div>
-                    <div class="flex justify-between text-xs mb-1">
-                        <span class="text-slate-400">Progreso de Pago</span>
-                        <span class="font-semibold text-slate-200">${progressPct}%</span>
-                    </div>
-                    <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                        <div class="bg-indigo-500 h-full rounded-full transition-all duration-300" style="width: ${progressPct}%"></div>
-                    </div>
-                </div>
 
-                <div class="space-y-2 mt-4">
-                    <p class="text-xs font-semibold tracking-wider uppercase text-slate-400">Cuotas Quincenales</p>
-                    ${installmentRows}
+                <div id="purchase-content-${p.id}" class="purchase-accordion-content hidden space-y-4 pt-4 border-t border-slate-800">
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400">Progreso de Pago</span>
+                            <span class="font-semibold text-slate-200">${progressPct}%</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                            <div class="bg-indigo-500 h-full rounded-full transition-all duration-300" style="width: ${progressPct}%"></div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 mt-4">
+                        <p class="text-xs font-semibold tracking-wider uppercase text-slate-400">Cuotas Quincenales</p>
+                        ${installmentRows}
+                    </div>
                 </div>
             `;
             container.appendChild(card);
@@ -1809,32 +1830,44 @@
                 const isAdmin = currentUser && currentUser.role === 'admin';
 
                 const card = document.createElement('div');
-                card.className = `bg-slate-900 border ${isPaid ? 'border-slate-800 opacity-60' : 'border-slate-700'} rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm`;
+                card.className = `bg-slate-900 border ${isPaid ? 'border-slate-800 opacity-60' : 'border-slate-700'} rounded-xl p-5 shadow-sm transition`;
 
                 const editDebtBtn = isAdmin ? `
-                    <button type="button" onclick="openEditModal('debt', ${d.id})" class="p-2 hover:bg-slate-800 text-cyan-400 rounded-lg transition" title="Editar Cuenta">
+                    <button type="button" onclick="openEditModal('debt', ${d.id}); event.stopPropagation();" class="p-2 hover:bg-slate-800 text-cyan-400 rounded-lg transition" title="Editar Cuenta">
                         <i data-lucide="edit-2" class="w-4 h-4"></i>
                     </button>
                 ` : '';
 
                 card.innerHTML = `
-                    <div class="space-y-1">
-                        <div class="flex items-center gap-2">
-                            <span class="px-2 py-0.5 text-[10px] rounded font-bold uppercase tracking-wider ${badgeClass}">
-                                ${typeLabel}
-                            </span>
-                            ${editDebtBtn}
+                    <div onclick="toggleCardAccordion('debt', ${d.id})" class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer select-none">
+                        <div class="flex items-center gap-3">
+                            <div id="debt-icon-${d.id}" class="debt-accordion-icon text-slate-400 transition-transform duration-200">
+                                <i data-lucide="chevron-down" class="w-5 h-5"></i>
+                            </div>
+                            <div class="space-y-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2 py-0.5 text-[10px] rounded font-bold uppercase tracking-wider ${badgeClass}">
+                                        ${typeLabel}
+                                    </span>
+                                    ${editDebtBtn}
+                                </div>
+                                <h5 class="font-bold text-slate-100 text-base pt-1">${d.concepto}</h5>
+                                <p class="text-xs text-slate-400">Persona involucrada: <span class="text-slate-200 font-semibold">${d.persona}</span></p>
+                            </div>
                         </div>
-                        <h5 class="font-bold text-slate-100 text-base pt-1">${d.concepto}</h5>
-                        <p class="text-xs text-slate-400">Persona involucrada: <span class="text-slate-200 font-semibold">${d.persona}</span></p>
-                        <p class="text-xs text-slate-500">Monto total registrado: $${formatNumber(d.montoTotal)}</p>
+                        <div class="flex items-center gap-4 justify-between sm:justify-end border-t border-slate-800 sm:border-0 pt-3 sm:pt-0" onclick="event.stopPropagation()">
+                            <div class="text-left sm:text-right">
+                                <p class="text-xs text-slate-500">Saldo Pendiente</p>
+                                <p class="font-bold text-lg text-amber-400">$${formatNumber(d.montoPendiente)}</p>
+                                ${getEquivUsdHtml(d.montoPendiente)}
+                                ${isPaid ? `<span class="text-xs text-emerald-400 font-bold uppercase tracking-wider">Totalmente solventado</span>` : ''}
+                            </div>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-4 justify-between sm:justify-end border-t border-slate-800 sm:border-0 pt-3 sm:pt-0">
-                        <div class="text-left sm:text-right">
-                            <p class="text-xs text-slate-500">Saldo Pendiente</p>
-                            <p class="font-bold text-lg text-amber-400">$${formatNumber(d.montoPendiente)}</p>
-                            ${getEquivUsdHtml(d.montoPendiente)}
-                            ${isPaid ? `<span class="text-xs text-emerald-400 font-bold uppercase tracking-wider">Totalmente solventado</span>` : ''}
+
+                    <div id="debt-content-${d.id}" class="debt-accordion-content hidden mt-4 pt-4 border-t border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <p class="text-xs text-slate-400">Monto total registrado: <span class="text-slate-200 font-semibold">$${formatNumber(d.montoTotal)}</span></p>
                         </div>
                         <div class="flex items-center gap-2">
                             ${!isPaid ? `
@@ -1939,47 +1972,42 @@
         }
 
         async function exportData() {
-            try {
-                const txs = await db.transacciones.where('userId').equals(currentUser.id).toArray();
-                const compras = await db.compras.where('userId').equals(currentUser.id).toArray();
-                const deudas = await db.deudas.where('userId').equals(currentUser.id).toArray();
+            if (!currentUser) return;
+            const txs = await db.transacciones.where('userId').equals(currentUser.id).toArray();
+            const compras = await db.compras.where('userId').equals(currentUser.id).toArray();
+            const deudas = await db.deudas.where('userId').equals(currentUser.id).toArray();
 
-                const backup = {
-                    metadata: {
-                        exportDate: Date.now(),
-                        user: currentUser.username
-                    },
-                    transacciones: txs,
-                    compras,
-                    deudas
-                };
+            const dataObj = {
+                usuario: currentUser.username,
+                exportDate: new Date().toISOString(),
+                transacciones: txs,
+                compras: compras,
+                deudas: deudas
+            };
 
-                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup, null, 2));
-                const dlAnchor = document.createElement('a');
-                dlAnchor.setAttribute("href", dataStr);
-                dlAnchor.setAttribute("download", `InterFinanzas_Backup_${currentUser.username}.json`);
-                document.body.appendChild(dlAnchor);
-                dlAnchor.click();
-                dlAnchor.remove();
-            } catch (err) {
-                alert("Error al exportar los datos de seguridad: " + err.message);
-            }
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataObj, null, 2));
+            const dlAnchorElem = document.createElement('a');
+            dlAnchorElem.setAttribute("href", dataStr);
+            dlAnchorElem.setAttribute("download", `InterFinanzas_${currentUser.username}_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(dlAnchorElem);
+            dlAnchorElem.click();
+            dlAnchorElem.remove();
         }
 
-        window.resetDB = async function() {
-            if (confirm("ADVERTENCIA CRÍTICA: Se borrarán permanentemente todas las transacciones, deudas, usuarios de esta instalación, restableciendo el aplicativo al estado de fábrica. ¿Deseas continuar?")) {
-                const p = prompt("Por favor escribe la palabra 'BORRAR' para confirmar la acción:");
-                if (p === 'BORRAR') {
-                    await db.delete();
-                    localStorage.clear();
-                    alert("Base de datos local IndexedDB eliminada con éxito. Recargando la aplicación...");
-                    window.location.reload();
-                }
-            }
-        };
-
         async function dangerWipeDatabase() {
-            await window.resetDB();
+            if (currentUser && currentUser.role === 'admin') {
+                const confirmation = prompt("ATENCIÓN: Estás a punto de borrar TODOS los registros de transacciones, deudas y financiamientos de este dispositivo. Escribe 'BORRAR' para confirmar:");
+                if (confirmation === 'BORRAR') {
+                    await db.transacciones.where('userId').equals(currentUser.id).delete();
+                    await db.compras.where('userId').equals(currentUser.id).delete();
+                    await db.deudas.where('userId').equals(currentUser.id).delete();
+                    await syncCurrentUserDataToCloud();
+                    await updateBalancesAndDashboards();
+                    alert("Base de datos restablecida correctamente.");
+                }
+            } else {
+                alert("Solo el Administrador puede realizar un restablecimiento de datos.");
+            }
         }
     </script>
 </body>
