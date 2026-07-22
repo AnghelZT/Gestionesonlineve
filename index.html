@@ -553,6 +553,22 @@
             measurementId: "G-NCB5ZYGRXC"
         };
 
+        // --- CONFIGURACIÓN DE SUPABASE (CON PROTECCIÓN) ---
+        const SUPABASE_URL = 'https://hosbzqfmjwahiwthuhmh.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_M3V0y48Nm5Gk2yufOJr5wQ_CeInbw9c';
+        let supabase = null;
+        try {
+            if (window.supabase && typeof window.supabase.createClient === 'function') {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                console.log('Supabase inicializado correctamente');
+            } else {
+                console.warn('Supabase JS no disponible, se usará solo almacenamiento local');
+            }
+        } catch (e) {
+            console.warn('Error al inicializar Supabase, se usará solo almacenamiento local:', e);
+            supabase = null;
+        }
+
         // --- 1. CONFIGURACIÓN DE LA BASE DE DATOS LOCAL (DEXIE) ---
         const db = new Dexie("InterFinanzasDB");
         db.version(1).stores({
@@ -1112,26 +1128,30 @@
                 });
 
                 // ==========================================
-                // ENVÍO DIRECTO A LA NUEVA TABLA DE SUPABASE
+                // ENVÍO DIRECTO A LA NUEVA TABLA DE SUPABASE (SI ESTÁ DISPONIBLE)
                 // ==========================================
-                const { data: sData, error: sError } = await supabase
-                    .from('transacciones') // Tu nueva tabla limpia
-                    .insert([
-                        { 
-                            monto: monto,
-                            moneda: moneda,
-                            descripcion: descripcion,
-                            referencia: referencia,
-                            tipo: currentTxType
-                        }
-                    ]);
+                if (supabase) {
+                    try {
+                        const { error: sError } = await supabase
+                            .from('transacciones')
+                            .insert([
+                                { 
+                                    monto: monto,
+                                    moneda: moneda,
+                                    descripcion: descripcion,
+                                    referencia: referencia,
+                                    tipo: currentTxType
+                                }
+                            ]);
 
-                if (sError) {
-                    // Si Supabase rechaza el envío, verás el motivo exacto en la consola
-                    console.error('Error crítico en Supabase:', sError.message);
-                    alert('Error al guardar en la nube: ' + sError.message);
-                } else {
-                    console.log('¡Transacción guardada en Supabase con éxito!');
+                        if (sError) {
+                            console.warn('Supabase insert error (no crítico):', sError.message);
+                        } else {
+                            console.log('Transacción guardada en Supabase con éxito');
+                        }
+                    } catch (supaErr) {
+                        console.warn('Supabase no disponible, transacción guardada solo localmente:', supaErr);
+                    }
                 }
                 // ==========================================
 
@@ -1965,6 +1985,119 @@
                 list.appendChild(card);
             });
         }
+
+        // --- FUNCIONES ADICIONALES FALTANTES ---
+        async function deleteTransaction(id) {
+            if (!currentUser) return;
+            if (confirm('¿Estás seguro de eliminar esta transacción?')) {
+                await db.transacciones.delete(id);
+                if (supabase) {
+                    try {
+                        await supabase.from('transacciones').delete().eq('id', id);
+                    } catch(e) {
+                        console.warn('No se pudo eliminar en Supabase (solo local):', e);
+                    }
+                }
+                await syncCurrentUserDataToCloud().catch(() => {});
+                await updateBalancesAndDashboards();
+            }
+        }
+
+        async function deleteDebt(id) {
+            if (!currentUser) return;
+            if (confirm('¿Estás seguro de eliminar esta cuenta?')) {
+                await db.deudas.delete(id);
+                await syncCurrentUserDataToCloud().catch(() => {});
+                await updateBalancesAndDashboards();
+            }
+        }
+
+        async function exportData() {
+            if (!currentUser) return;
+            const txs = await db.transacciones.where('userId').equals(currentUser.id).toArray();
+            const compras = await db.compras.where('userId').equals(currentUser.id).toArray();
+            const deudas = await db.deudas.where('userId').equals(currentUser.id).toArray();
+            const dataExport = {
+                usuario: currentUser.username,
+                fechaExportacion: new Date().toISOString(),
+                transacciones: txs,
+                compras: compras,
+                deudas: deudas
+            };
+            const blob = new Blob([JSON.stringify(dataExport, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `InterFinanzas_Backup_${currentUser.username}_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        async function renderAdminPanel() {
+            if (!currentUser || currentUser.role !== 'admin') return;
+            const users = await db.usuarios.toArray();
+            const tbody = document.getElementById('users-table-body');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            users.forEach(u => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-800/40 transition";
+                tr.innerHTML = `
+                    <td class="py-3 font-medium text-slate-200">${u.username} <span class="text-xs text-slate-400">(${u.nombre || 'Sin nombre'})</span></td>
+                    <td class="py-3"><span class="px-2 py-0.5 text-xs rounded-full font-bold uppercase ${u.role === 'admin' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-slate-700 text-slate-300'}">${u.role}</span></td>
+                    <td class="py-3 text-right">
+                        ${u.username !== currentUser.username ? `<button type="button" onclick="deleteUser(${u.id})" class="text-rose-400 hover:text-rose-300 text-xs font-semibold px-2 py-1 bg-rose-500/10 rounded-lg transition">Eliminar</button>` : '<span class="text-xs text-slate-500">Actual</span>'}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function deleteUser(userId) {
+            if (confirm('¿Estás seguro de eliminar este usuario y todos sus datos locales?')) {
+                const userToDelete = await db.usuarios.get(userId);
+                if (userToDelete) {
+                    await db.transacciones.where('userId').equals(userId).delete();
+                    await db.compras.where('userId').equals(userId).delete();
+                    await db.deudas.where('userId').equals(userId).delete();
+                    await db.usuarios.delete(userId);
+                    await updateBalancesAndDashboards();
+                }
+            }
+        }
+
+        async function dangerWipeDatabase() {
+            if (confirm('ADVERTENCIA: ¿Estás seguro de restablecer toda la base de datos local? Esta acción no se puede deshacer.')) {
+                await db.delete();
+                localStorage.removeItem('activeUserSession');
+                window.location.reload();
+            }
+        }
+
+        window.openPaymentModal = function(targetType, targetId, installmentIdx, maxAmount, conceptText) {
+            document.getElementById('modal-target-type').value = targetType;
+            document.getElementById('modal-target-id').value = targetId;
+            document.getElementById('modal-installment-idx').value = installmentIdx !== undefined ? installmentIdx : 0;
+            document.getElementById('modal-max-amount').innerText = `$${formatNumber(maxAmount)}`;
+            document.getElementById('modal-pay-amount').value = maxAmount.toFixed(2);
+            document.getElementById('modal-pay-referencia').value = '';
+            document.getElementById('modal-pay-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('modal-concept-subtitle').innerText = conceptText || 'Abonar saldo a la deuda activa';
+            document.getElementById('modal-conversion-notice').classList.add('hidden');
+            document.getElementById('payment-modal').classList.remove('hidden');
+        };
+
+        window.closePaymentModal = function() {
+            document.getElementById('payment-modal').classList.add('hidden');
+            document.getElementById('modal-payment-form').reset();
+        };
+
+        window.fillModalMaxAmount = function() {
+            const maxText = document.getElementById('modal-max-amount').innerText.replace('$', '').replace(',', '');
+            document.getElementById('modal-pay-amount').value = parseFloat(maxText) || 0;
+            const event = new Event('input', { bubbles: true });
+            document.getElementById('modal-pay-amount').dispatchEvent(event);
+        };
     </script>
 </body>
 </html>
