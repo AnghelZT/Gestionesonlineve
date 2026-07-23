@@ -70,7 +70,7 @@
     <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6">
         
         <!-- PANTALLA DE AUTENTICACIÓN (LOGIN / REGISTRO) -->
-        <section id="auth-section" class="max-w-md mx-auto my-12 bg-slate-800 border border-slate-700 rounded-2xl p-8 shadow-xl">
+        <section id="auth-section" class="max-w-lg mx-auto my-12 bg-slate-800 border border-slate-700 rounded-2xl p-8 shadow-xl">
             <div class="text-center mb-8">
                 <h2 id="auth-title" class="text-2xl font-bold text-slate-100">Iniciar Sesión</h2>
                 <p id="auth-subtitle" class="text-slate-400 text-sm mt-2">Accede para gestionar tus finanzas</p>
@@ -84,6 +84,37 @@
                         <input type="text" id="auth-username" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-11 pr-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition" placeholder="Introduce tu usuario">
                     </div>
                 </div>
+
+                <!-- Campos extra SOLO para registro -->
+                <div id="register-extra-fields" class="hidden space-y-4">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1.5">Nombre</label>
+                            <input type="text" id="reg-nombre" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="Tu nombre">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1.5">Apellido</label>
+                            <input type="text" id="reg-apellido" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="Tu apellido">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1.5">Cédula / Identificación</label>
+                        <input type="text" id="reg-cedula" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="V-12345678">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1.5">Teléfono</label>
+                        <input type="tel" id="reg-telefono" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="+58 412-1234567">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1.5">Correo Electrónico</label>
+                        <input type="email" id="reg-correo" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="correo@ejemplo.com">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1.5">Dirección</label>
+                        <textarea id="reg-direccion" rows="2" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="Tu dirección completa"></textarea>
+                    </div>
+                </div>
+
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Contraseña</label>
                     <div class="relative">
@@ -96,6 +127,11 @@
                     Entrar a la Plataforma
                 </button>
             </form>
+
+            <div id="auth-success-msg" class="hidden text-center p-4 bg-emerald-950/40 border border-emerald-700/40 rounded-xl mb-4">
+                <p class="text-emerald-400 font-bold text-lg">✅ ¡Registro exitoso!</p>
+                <p class="text-emerald-300 text-sm mt-1">Ahora puedes iniciar sesión con tus credenciales.</p>
+            </div>
 
             <div class="mt-6 text-center">
                 <button id="toggle-auth-mode" class="text-sm text-indigo-400 hover:text-indigo-300 transition">¿No tienes cuenta? Regístrate aquí</button>
@@ -148,24 +184,29 @@
                 </div>
             </div>
 
-            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-md">
-                <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-wider text-cyan-300">Calculadora USD / BS</p>
-                        <h3 class="text-xl font-bold mt-1 text-white">Convierte al tipo de cambio actual</h3>
-                    </div>
-                    <div class="text-sm text-slate-400">Tasa actual: <span id="calculator-rate" class="font-semibold text-emerald-400">Bs 0.00</span></div>
+            <!-- Calculadora flotante (botón + modal) -->
+            <button id="calc-fab" class="fixed bottom-6 right-6 z-50 bg-indigo-600 hover:bg-indigo-500 text-white p-4 rounded-full shadow-2xl shadow-indigo-600/30 transition-all duration-200 hover:scale-110" title="Calculadora USD/BS">
+                <i data-lucide="calculator" class="w-6 h-6"></i>
+            </button>
+
+            <div id="calc-modal" class="hidden fixed bottom-24 right-6 z-50 w-80 bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-2xl">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-cyan-300">Calculadora USD / BS</p>
+                    <button id="calc-close" class="text-slate-400 hover:text-slate-200 transition">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
-                    <div class="bg-slate-900/70 border border-slate-700 rounded-xl p-4">
-                        <label class="block text-xs font-semibold text-slate-400 mb-2">Dólares a Bolívares</label>
-                        <input id="usd-to-ves-input" type="number" step="0.01" value="1" class="w-full bg-slate-800 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-cyan-500" placeholder="0.00">
-                        <p id="usd-to-ves-result" class="mt-3 text-lg font-semibold text-emerald-400">Bs 0.00</p>
+                <div class="text-xs text-slate-400 mb-3">Tasa BCV: <span id="calculator-rate" class="font-semibold text-emerald-400">Bs 0.00</span></div>
+                <div class="space-y-3">
+                    <div class="bg-slate-900/70 border border-slate-700 rounded-xl p-3">
+                        <label class="block text-xs font-semibold text-slate-400 mb-1.5">Dólares a Bolívares</label>
+                        <input id="usd-to-ves-input" type="number" step="0.01" value="1" class="w-full bg-slate-800 border border-slate-700 rounded-lg py-2 px-3 text-slate-200 focus:outline-none focus:border-cyan-500 text-sm" placeholder="0.00">
+                        <p id="usd-to-ves-result" class="mt-2 text-base font-semibold text-emerald-400">Bs 0.00</p>
                     </div>
-                    <div class="bg-slate-900/70 border border-slate-700 rounded-xl p-4">
-                        <label class="block text-xs font-semibold text-slate-400 mb-2">Bolívares a Dólares</label>
-                        <input id="ves-to-usd-input" type="number" step="0.01" value="100" class="w-full bg-slate-800 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="0.00">
-                        <p id="ves-to-usd-result" class="mt-3 text-lg font-semibold text-cyan-400">$0.00</p>
+                    <div class="bg-slate-900/70 border border-slate-700 rounded-xl p-3">
+                        <label class="block text-xs font-semibold text-slate-400 mb-1.5">Bolívares a Dólares</label>
+                        <input id="ves-to-usd-input" type="number" step="0.01" value="100" class="w-full bg-slate-800 border border-slate-700 rounded-lg py-2 px-3 text-slate-200 focus:outline-none focus:border-indigo-500 text-sm" placeholder="0.00">
+                        <p id="ves-to-usd-result" class="mt-2 text-base font-semibold text-cyan-400">$0.00</p>
                     </div>
                 </div>
             </div>
@@ -286,6 +327,10 @@
                                     <option value="4">4 Cuotas</option>
                                     <option value="6">6 Cuotas</option>
                                 </select>
+                            </div>
+                            <div class="flex items-center gap-2 bg-slate-900/50 border border-slate-700/50 rounded-xl p-3">
+                                <input type="checkbox" id="pur-deduct-downpayment" class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-0">
+                                <label for="pur-deduct-downpayment" class="text-xs text-slate-300 cursor-pointer select-none">Descontar inicial de Caja USD</label>
                             </div>
                             <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition">Dividir & Registrar</button>
                         </form>
@@ -1048,11 +1093,17 @@
         function setupEventListeners() {
             // Cambio entre Inicio de Sesión y Registro
             const authToggle = document.getElementById('toggle-auth-mode');
+            const authSuccessMsg = document.getElementById('auth-success-msg');
+            const registerExtraFields = document.getElementById('register-extra-fields');
             authToggle.addEventListener('click', () => {
                 const isLogin = document.getElementById('auth-title').innerText === 'Iniciar Sesión';
                 document.getElementById('auth-title').innerText = isLogin ? 'Crear una Cuenta' : 'Iniciar Sesión';
                 document.getElementById('auth-subtitle').innerText = isLogin ? 'Únete al sistema de control de caja' : 'Accede para gestionar tus finanzas';
                 authToggle.innerText = isLogin ? '¿Ya tienes cuenta? Inicia sesión aquí' : '¿No tienes cuenta? Regístrate aquí';
+                // Mostrar/ocultar campos extra de registro
+                registerExtraFields.classList.toggle('hidden', !isLogin);
+                authSuccessMsg.classList.add('hidden');
+                document.getElementById('auth-form').reset();
             });
 
             // Manejador del Formulario de Autenticación
@@ -1093,8 +1144,23 @@
                         alert("El nombre de usuario ya se encuentra registrado.");
                         return;
                     }
+
+                    // Recoger datos extra del formulario de registro
+                    const nombre = document.getElementById('reg-nombre').value.trim();
+                    const apellido = document.getElementById('reg-apellido').value.trim();
+                    const cedula = document.getElementById('reg-cedula').value.trim();
+                    const telefono = document.getElementById('reg-telefono').value.trim();
+                    const correo = document.getElementById('reg-correo').value.trim();
+                    const direccion = document.getElementById('reg-direccion').value.trim();
+
+                    // Guardar datos extra como JSON en el username (para mantener compatibilidad)
+                    const userData = JSON.stringify({
+                        nombre, apellido, cedula, telefono, correo, direccion
+                    });
+                    const displayName = `${nombre} ${apellido}`.trim() || username;
+
                     const newUser = await ensureLocalUserRecord(username, hashedPassword, 'user');
-                    currentUser = newUser;
+                    
                     if (cloudSyncEnabled && supabaseClient) {
                         const { data: existingUser } = await supabaseClient
                             .from('usuarios')
@@ -1105,14 +1171,25 @@
                             await supabaseClient.from('usuarios').insert({
                                 username,
                                 password: hashedPassword,
-                                role: 'user'
+                                role: 'user',
+                                nombre: nombre || null,
+                                apellido: apellido || null,
+                                cedula: cedula || null,
+                                telefono: telefono || null,
+                                correo: correo || null,
+                                direccion: direccion || null
                             });
                         }
                     }
                     await syncCurrentUserDataToSupabase();
-                    localStorage.setItem('activeUserSession', JSON.stringify({ username }));
+
+                    // Mostrar mensaje de éxito y redirigir al login
                     document.getElementById('auth-form').reset();
-                    showDashboard();
+                    document.getElementById('auth-title').innerText = 'Iniciar Sesión';
+                    document.getElementById('auth-subtitle').innerText = 'Accede para gestionar tus finanzas';
+                    authToggle.innerText = '¿No tienes cuenta? Regístrate aquí';
+                    registerExtraFields.classList.add('hidden');
+                    authSuccessMsg.classList.remove('hidden');
                 }
             });
 
@@ -1235,17 +1312,21 @@
                     return;
                 }
 
-                // Cálculo de las cuotas con redondeo correcto
+                // Cálculo de las cuotas exactamente iguales
                 const remaining = total - downpayment;
-                const baseInstallment = Math.floor((remaining / totalInstallments) * 100) / 100;
-                const remainder = Math.round((remaining - (baseInstallment * totalInstallments)) * 100) / 100;
-
+                const equalAmount = Math.round((remaining / totalInstallments) * 100) / 100;
+                // Ajustar para que la suma sea exacta
                 const installments = [];
+                let sumAmounts = 0;
                 for (let i = 1; i <= totalInstallments; i++) {
+                    const amount = i === totalInstallments
+                        ? Math.round((remaining - sumAmounts) * 100) / 100
+                        : equalAmount;
+                    sumAmounts += amount;
                     installments.push({
                         installmentNumber: i,
                         dueDate: firstPaymentTimestamp + (i * 14 * 24 * 60 * 60 * 1000), // Cada 14 días desde la fecha inicial
-                        amount: i === totalInstallments ? baseInstallment + remainder : baseInstallment,
+                        amount: amount,
                         status: 'pendiente',
                         paidAmount: 0
                     });
@@ -1265,15 +1346,18 @@
 
                 syncCurrentUserDataToSupabase().catch(() => {});
 
-                // Registrar de forma automática la inicial como un egreso de Caja USD
-                await db.transacciones.add({
-                    fecha: firstPaymentTimestamp,
-                    tipo: 'egreso',
-                    monto: downpayment,
-                    moneda: 'USD',
-                    descripcion: `Inicial financiamiento: ${item}`,
-                    userId: currentUser.id
-                });
+                // Registrar la inicial como egreso SOLO si el usuario lo indica
+                const deductDownpayment = document.getElementById('pur-deduct-downpayment').checked;
+                if (deductDownpayment) {
+                    await db.transacciones.add({
+                        fecha: firstPaymentTimestamp,
+                        tipo: 'egreso',
+                        monto: downpayment,
+                        moneda: 'USD',
+                        descripcion: `Inicial financiamiento: ${item}`,
+                        userId: currentUser.id
+                    });
+                }
 
                 await syncCurrentUserDataToSupabase();
                 document.getElementById('purchase-form').reset();
@@ -1483,6 +1567,31 @@
                 closeEditModal();
                 await updateBalancesAndDashboards();
             });
+
+            // Calculadora flotante - toggle
+            const calcFab = document.getElementById('calc-fab');
+            const calcModal = document.getElementById('calc-modal');
+            const calcClose = document.getElementById('calc-close');
+
+            if (calcFab && calcModal) {
+                calcFab.addEventListener('click', () => {
+                    calcModal.classList.toggle('hidden');
+                    lucide.createIcons();
+                });
+                if (calcClose) {
+                    calcClose.addEventListener('click', () => {
+                        calcModal.classList.add('hidden');
+                    });
+                }
+                // Cerrar al hacer clic fuera
+                document.addEventListener('click', (e) => {
+                    if (!calcModal.classList.contains('hidden') &&
+                        !calcModal.contains(e.target) &&
+                        !calcFab.contains(e.target)) {
+                        calcModal.classList.add('hidden');
+                    }
+                });
+            }
 
             // Filtro de historial transaccional
             document.getElementById('filter-tx-type').addEventListener('change', async () => {
@@ -1806,45 +1915,84 @@
                 return;
             }
 
-            debts.forEach(d => {
-                const isPaid = d.status === 'pagado';
-                const isPorCobrar = d.tipo === 'cobrar';
-                const typeLabel = isPorCobrar ? 'POR COBRAR (Cliente)' : 'POR PAGAR (Proveedor)';
-                const badgeClass = isPorCobrar ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20';
+            // Agrupar por tipo
+            const cobrar = debts.filter(d => d.tipo === 'cobrar');
+            const pagar = debts.filter(d => d.tipo === 'pagar');
 
-                const card = document.createElement('div');
-                card.className = `bg-slate-900 border ${isPaid ? 'border-slate-800 opacity-60' : 'border-slate-700'} rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm`;
-
-                card.innerHTML = `
-                    <div class="space-y-1">
-                        <span class="px-2 py-0.5 text-[10px] rounded font-bold uppercase tracking-wider ${badgeClass}">
-                            ${typeLabel}
-                        </span>
-                        <h5 class="font-bold text-slate-100 text-base pt-1">${d.concepto}</h5>
-                        <p class="text-xs text-slate-400">Persona involucrada: <span class="text-slate-200 font-semibold">${d.persona}</span></p>
-                        <p class="text-xs text-slate-500">Monto total registrado: $${d.montoTotal.toFixed(2)}</p>
-                    </div>
-                    <div class="flex items-center gap-4 justify-between sm:justify-end border-t border-slate-800 sm:border-0 pt-3 sm:pt-0">
-                        <div class="text-left sm:text-right">
-                            <p class="text-xs text-slate-500">Saldo Pendiente</p>
-                            <p class="font-bold text-lg text-amber-400">$${d.montoPendiente.toFixed(2)}</p>
-                            ${isPaid ? `<span class="text-xs text-emerald-400 font-bold uppercase tracking-wider">Totalmente solventado</span>` : ''}
+            function renderGroup(title, items, icon, colorClass, badgeClass) {
+                if (items.length === 0) return '';
+                
+                const totalPendiente = items.reduce((sum, d) => sum + d.montoPendiente, 0);
+                const groupId = `debt-group-${title.replace(/\s+/g, '-').toLowerCase()}`;
+                
+                let itemsHtml = '';
+                items.forEach(d => {
+                    const isPaid = d.status === 'pagado';
+                    itemsHtml += `
+                        <div class="bg-slate-900/80 border ${isPaid ? 'border-slate-800 opacity-60' : 'border-slate-700/50'} rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+                            <div class="space-y-1">
+                                <h5 class="font-bold text-slate-100 text-sm">${d.concepto}</h5>
+                                <p class="text-xs text-slate-400">Persona: <span class="text-slate-200 font-semibold">${d.persona}</span></p>
+                                <p class="text-xs text-slate-500">Total: $${d.montoTotal.toFixed(2)}</p>
+                            </div>
+                            <div class="flex items-center gap-3 justify-between sm:justify-end border-t border-slate-800 sm:border-0 pt-3 sm:pt-0">
+                                <div class="text-left sm:text-right">
+                                    <p class="text-xs text-slate-500">Pendiente</p>
+                                    <p class="font-bold text-base ${isPaid ? 'text-emerald-400' : 'text-amber-400'}">$${d.montoPendiente.toFixed(2)}</p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    ${!isPaid ? `
+                                        <button onclick="openPaymentModal('deuda', ${d.id}, 0, ${d.montoPendiente}, '${d.concepto} (${d.persona})')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold rounded-lg transition">
+                                            Abonar
+                                        </button>
+                                    ` : ''}
+                                    <button onclick="deleteDebt(${d.id})" class="p-1.5 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 rounded-lg transition" title="Eliminar registro">
+                                        <i data-lucide="trash" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="flex items-center gap-2">
-                            ${!isPaid ? `
-                                <button onclick="openPaymentModal('deuda', ${d.id}, 0, ${d.montoPendiente}, '${d.concepto} (${d.persona})')" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition">
-                                    Abonar
-                                </button>
-                            ` : ''}
-                            <button onclick="deleteDebt(${d.id})" class="p-2 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 rounded-lg transition" title="Eliminar registro">
-                                <i data-lucide="trash" class="w-4 h-4"></i>
-                            </button>
+                    `;
+                });
+
+                return `
+                    <div class="bg-slate-800/60 border border-slate-700/60 rounded-2xl overflow-hidden">
+                        <button onclick="toggleDebtGroup('${groupId}')" class="w-full flex items-center justify-between p-4 hover:bg-slate-700/40 transition text-left">
+                            <div class="flex items-center gap-3">
+                                <span class="p-2 rounded-lg ${colorClass}">
+                                    <i data-lucide="${icon}" class="w-5 h-5"></i>
+                                </span>
+                                <div>
+                                    <h4 class="font-bold text-slate-100 text-base">${title}</h4>
+                                    <p class="text-xs text-slate-400">${items.length} registro(s) - Total pendiente: <span class="font-semibold text-amber-400">$${totalPendiente.toFixed(2)}</span></p>
+                                </div>
+                            </div>
+                            <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-transform duration-200" id="${groupId}-icon"></i>
+                        </button>
+                        <div id="${groupId}" class="hidden space-y-2 px-4 pb-4">
+                            ${itemsHtml}
                         </div>
                     </div>
                 `;
-                list.appendChild(card);
-            });
+            }
+
+            list.innerHTML = `
+                ${renderGroup('Por Cobrar', cobrar, 'trending-up', 'bg-cyan-500/10 text-cyan-400', 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20')}
+                ${renderGroup('Por Pagar', pagar, 'trending-down', 'bg-rose-500/10 text-rose-400', 'bg-rose-500/10 text-rose-400 border border-rose-500/20')}
+            `;
         }
+
+        // Función global para toggle de grupos de deudas
+        window.toggleDebtGroup = function(groupId) {
+            const group = document.getElementById(groupId);
+            const icon = document.getElementById(`${groupId}-icon`);
+            if (group) {
+                group.classList.toggle('hidden');
+                if (icon) {
+                    icon.style.transform = group.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+                }
+            }
+        };
 
         async function renderAdminPanel() {
             if (currentUser.role !== 'admin') return;
