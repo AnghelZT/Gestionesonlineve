@@ -632,8 +632,8 @@
 
         // --- 1. CONFIGURACIÓN DE LA BASE DE DATOS LOCAL (DEXIE) ---
         const db = new Dexie("InterFinanzasDB");
-        db.version(2).stores({
-            usuarios: '++id, &username, role',
+        db.version(3).stores({
+            usuarios: '++id, &username, role, supabaseId',
             transacciones: '++id, fecha, tipo, monto, moneda, descripcion, userId',
             compras: '++id, item, total, downpayment, totalInstallments, installments, status, userId',
             deudas: '++id, tipo, persona, concepto, montoTotal, montoPendiente, status, userId',
@@ -643,6 +643,7 @@
 
         // --- 2. VARIABLES DE ESTADO ---
         let currentUser = null;
+        let currentSupabaseUserId = null; // ID real del usuario en Supabase (consistente entre dispositivos)
         let bcvRate = 732.48; // Valor de respaldo inicial por si falla la conexión externa (Tasas reales de 2026)
         let euroRate = 838.07; // Valor de respaldo inicial
         let binanceRate = 839.34; // Valor de respaldo inicial
@@ -758,18 +759,31 @@
             }
         }
 
-        async function ensureLocalUserRecord(username, passwordHash, role = 'user') {
+        async function ensureLocalUserRecord(username, passwordHash, role = 'user', supabaseId = null) {
             let user = await db.usuarios.get({ username });
             if (user) {
+                let changed = false;
                 if (passwordHash && user.password !== passwordHash) {
                     user.password = passwordHash;
+                    changed = true;
+                }
+                if (supabaseId && user.supabaseId !== supabaseId) {
+                    user.supabaseId = supabaseId;
+                    changed = true;
+                }
+                if (changed) {
                     await db.usuarios.put(user);
                 }
                 return user;
             }
 
-            const id = await db.usuarios.add({ username, password: passwordHash, role });
-            return { id, username, password: passwordHash, role };
+            const id = await db.usuarios.add({ 
+                username, 
+                password: passwordHash, 
+                role,
+                supabaseId: supabaseId 
+            });
+            return { id, username, password: passwordHash, role, supabaseId };
         }
 
         let syncInterval = null;
@@ -839,18 +853,10 @@
             return true;
         }
 
-        async function syncCurrentUserDataToSupabase() {
-            if (!cloudSyncEnabled || !currentUser || !supabaseClient || isSyncing) return;
-            isSyncing = true;
-            updateSyncIndicator('syncing');
+        async function getOrCreateSupabaseUser() {
+            if (!cloudSyncEnabled || !supabaseClient || !currentUser) return null;
 
             try {
-                const txs = await db.transacciones.where('userId').equals(currentUser.id).toArray();
-                const compras = await db.compras.where('userId').equals(currentUser.id).toArray();
-                const deudas = await db.deudas.where('userId').equals(currentUser.id).toArray();
-                const configuracion = await db.configuracion.toArray();
-
-                // Sincronizar usuario (individual porque es por username)
                 const { data: existingUser } = await supabaseClient
                     .from('usuarios')
                     .select('id')
@@ -858,26 +864,64 @@
                     .maybeSingle();
 
                 if (existingUser) {
+                    // Actualizar datos si es necesario
                     await supabaseClient
                         .from('usuarios')
                         .update({ password: currentUser.password, role: currentUser.role })
                         .eq('id', existingUser.id);
+                    return existingUser.id;
                 } else {
-                    await supabaseClient
+                    // Crear nuevo usuario en Supabase
+                    const { data: newUser, error } = await supabaseClient
                         .from('usuarios')
-                        .insert({ username: currentUser.username, password: currentUser.password, role: currentUser.role });
+                        .insert({ username: currentUser.username, password: currentUser.password, role: currentUser.role })
+                        .select('id')
+                        .single();
+                    if (error) throw error;
+                    return newUser.id;
+                }
+            } catch (err) {
+                console.warn('Error obteniendo/creando usuario en Supabase:', err);
+                return null;
+            }
+        }
+
+        async function syncCurrentUserDataToSupabase() {
+            if (!cloudSyncEnabled || !currentUser || !supabaseClient || isSyncing) return;
+            isSyncing = true;
+            updateSyncIndicator('syncing');
+
+            try {
+                // Obtener el ID real del usuario en Supabase (consistente entre dispositivos)
+                const supabaseUserId = await getOrCreateSupabaseUser();
+                if (!supabaseUserId) {
+                    updateSyncIndicator('disconnected');
+                    return;
                 }
 
-                // Sincronizar créditos
-                const creditos = await db.creditos.where('userId').equals(currentUser.id).toArray();
+                // Guardar el supabaseId en el registro local del usuario
+                if (!currentUser.supabaseId || currentUser.supabaseId !== supabaseUserId) {
+                    currentUser.supabaseId = supabaseUserId;
+                    const localUser = await db.usuarios.get({ username: currentUser.username });
+                    if (localUser) {
+                        localUser.supabaseId = supabaseUserId;
+                        await db.usuarios.put(localUser);
+                    }
+                }
 
-                // Batch upsert para cada tabla
+                const txs = await db.transacciones.where('userId').equals(currentUser.id).toArray();
+                const compras = await db.compras.where('userId').equals(currentUser.id).toArray();
+                const deudas = await db.deudas.where('userId').equals(currentUser.id).toArray();
+                const creditos = await db.creditos.where('userId').equals(currentUser.id).toArray();
+                const configuracion = await db.configuracion.toArray();
+
+                // Batch upsert para cada tabla usando el supabaseUserId REAL
                 await Promise.all([
-                    syncToSupabase('transacciones', txs, currentUser.id),
-                    syncToSupabase('compras', compras, currentUser.id),
-                    syncToSupabase('deudas', deudas, currentUser.id),
-                    syncToSupabase('creditos', creditos, currentUser.id),
-                    syncToSupabase('configuracion', configuracion, currentUser.id)
+                    syncToSupabase('transacciones', txs, supabaseUserId),
+                    syncToSupabase('compras', compras, supabaseUserId),
+                    syncToSupabase('deudas', deudas, supabaseUserId),
+                    syncToSupabase('creditos', creditos, supabaseUserId),
+                    syncToSupabase('configuracion', configuracion, supabaseUserId)
                 ]);
 
                 updateSyncIndicator('connected');
@@ -931,12 +975,19 @@
                     return;
                 }
 
-                // Descargar TODOS los datos de Supabase en paralelo
+                // Guardar el supabaseId en el registro local del usuario para referencia futura
+                const supabaseUserId = remoteUser.id;
+                if (!userRecord.supabaseId || userRecord.supabaseId !== supabaseUserId) {
+                    userRecord.supabaseId = supabaseUserId;
+                    await db.usuarios.put(userRecord);
+                }
+
+                // Descargar TODOS los datos de Supabase en paralelo usando el ID real de Supabase
                 const [remoteTxs, remoteCompras, remoteDeudas, remoteCreditos] = await Promise.all([
-                    pullFromSupabase('transacciones', userRecord.id),
-                    pullFromSupabase('compras', userRecord.id),
-                    pullFromSupabase('deudas', userRecord.id),
-                    pullFromSupabase('creditos', userRecord.id)
+                    pullFromSupabase('transacciones', supabaseUserId),
+                    pullFromSupabase('compras', supabaseUserId),
+                    pullFromSupabase('deudas', supabaseUserId),
+                    pullFromSupabase('creditos', supabaseUserId)
                 ]);
 
                 if (remoteTxs.length === 0 && remoteCompras.length === 0 && remoteDeudas.length === 0 && remoteCreditos.length === 0) {
