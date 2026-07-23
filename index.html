@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+1<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -8,10 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Dexie.js para IndexedDB -->
     <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
-    <!-- Firebase para sincronización en la nube -->
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-    <!-- Supabase JS Library -->
+    <!-- Supabase para sincronización en la nube -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@0.356.0/dist/umd/lucide.min.js"></script>
@@ -79,28 +76,7 @@
                 <p id="auth-subtitle" class="text-slate-400 text-sm mt-2">Accede para gestionar tus finanzas</p>
             </div>
             
-            <form id="auth-form" class="space-y-4">
-                <!-- Campos adicionales para Registro de Usuario -->
-                <div id="register-fields" class="hidden space-y-4">
-                    <div>
-                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Nombre Completo</label>
-                        <div class="relative">
-                            <i data-lucide="badge-info" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5"></i>
-                            <input type="text" id="auth-name" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-11 pr-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition" placeholder="Tu nombre y apellido">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Rol en el Sistema</label>
-                        <div class="relative">
-                            <i data-lucide="shield" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5"></i>
-                            <select id="auth-role-select" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-11 pr-4 text-slate-200 focus:outline-none focus:border-indigo-500 transition">
-                                <option value="user">Gestor / Usuario</option>
-                                <option value="admin">Administrador</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
+            <form id="auth-form" class="space-y-5">
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Usuario</label>
                     <div class="relative">
@@ -115,22 +91,14 @@
                         <input type="password" id="auth-password" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-11 pr-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition" placeholder="••••••••">
                     </div>
                 </div>
-
-                <div id="confirm-password-container" class="hidden">
-                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Confirmar Contraseña</label>
-                    <div class="relative">
-                        <i data-lucide="lock" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5"></i>
-                        <input type="password" id="auth-password-confirm" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-11 pr-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition" placeholder="••••••••">
-                    </div>
-                </div>
                 
-                <button type="submit" id="auth-submit-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-indigo-600/20 transition-all duration-200 transform hover:-translate-y-0.5">
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-indigo-600/20 transition-all duration-200 transform hover:-translate-y-0.5">
                     Entrar a la Plataforma
                 </button>
             </form>
 
             <div class="mt-6 text-center">
-                <button type="button" id="toggle-auth-mode" class="text-sm text-indigo-400 hover:text-indigo-300 transition">¿No tienes cuenta? Regístrate aquí</button>
+                <button id="toggle-auth-mode" class="text-sm text-indigo-400 hover:text-indigo-300 transition">¿No tienes cuenta? Regístrate aquí</button>
             </div>
         </section>
 
@@ -147,7 +115,6 @@
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-wider text-indigo-300">Caja Disponible ($)</p>
                             <h3 id="balance-usd" class="text-2xl font-bold mt-2 text-white">$0.00</h3>
-                            <div id="balance-usd-equiv" class="text-xs text-slate-400 mt-1">Bs 0.00</div>
                         </div>
                         <span class="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg"><i data-lucide="banknote"></i></span>
                     </div>
@@ -157,7 +124,6 @@
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-wider text-emerald-300">Caja Disponible (BS)</p>
                             <h3 id="balance-ves" class="text-2xl font-bold mt-2 text-white">Bs 0.00</h3>
-                            <div id="balance-ves-equiv" class="text-xs text-slate-400 mt-1">$0.00</div>
                         </div>
                         <span class="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg"><i data-lucide="coins"></i></span>
                     </div>
@@ -167,7 +133,6 @@
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-wider text-amber-300">Cobros Pendientes</p>
                             <h3 id="pending-receivables" class="text-2xl font-bold mt-2 text-white">$0.00</h3>
-                            <div id="pending-receivables-equiv" class="text-xs text-slate-400 mt-1">Bs 0.00</div>
                         </div>
                         <span class="p-2 bg-amber-500/10 text-amber-400 rounded-lg"><i data-lucide="trending-up"></i></span>
                     </div>
@@ -177,19 +142,40 @@
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-wider text-rose-300">Deudas Pendientes</p>
                             <h3 id="pending-payables" class="text-2xl font-bold mt-2 text-white">$0.00</h3>
-                            <div id="pending-payables-equiv" class="text-xs text-slate-400 mt-1">Bs 0.00</div>
                         </div>
                         <span class="p-2 bg-rose-500/10 text-rose-400 rounded-lg"><i data-lucide="trending-down"></i></span>
                     </div>
                 </div>
             </div>
 
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-md">
+                <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-cyan-300">Calculadora USD / BS</p>
+                        <h3 class="text-xl font-bold mt-1 text-white">Convierte al tipo de cambio actual</h3>
+                    </div>
+                    <div class="text-sm text-slate-400">Tasa actual: <span id="calculator-rate" class="font-semibold text-emerald-400">Bs 0.00</span></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
+                    <div class="bg-slate-900/70 border border-slate-700 rounded-xl p-4">
+                        <label class="block text-xs font-semibold text-slate-400 mb-2">Dólares a Bolívares</label>
+                        <input id="usd-to-ves-input" type="number" step="0.01" value="1" class="w-full bg-slate-800 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-cyan-500" placeholder="0.00">
+                        <p id="usd-to-ves-result" class="mt-3 text-lg font-semibold text-emerald-400">Bs 0.00</p>
+                    </div>
+                    <div class="bg-slate-900/70 border border-slate-700 rounded-xl p-4">
+                        <label class="block text-xs font-semibold text-slate-400 mb-2">Bolívares a Dólares</label>
+                        <input id="ves-to-usd-input" type="number" step="0.01" value="100" class="w-full bg-slate-800 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="0.00">
+                        <p id="ves-to-usd-result" class="mt-3 text-lg font-semibold text-cyan-400">$0.00</p>
+                    </div>
+                </div>
+            </div>
+
             <!-- NAVEGACIÓN DE PESTAÑAS -->
             <div class="flex border-b border-slate-700 overflow-x-auto hide-scrollbar space-x-1">
-                <button type="button" onclick="switchTab('transacciones')" class="tab-btn px-5 py-3 font-semibold text-sm border-b-2 transition whitespace-nowrap" id="tab-transacciones">Transacciones</button>
-                <button type="button" onclick="switchTab('compras')" class="tab-btn px-5 py-3 font-semibold text-sm border-b-2 transition whitespace-nowrap" id="tab-compras">Financiamientos (Cashea)</button>
-                <button type="button" onclick="switchTab('deudas')" class="tab-btn px-5 py-3 font-semibold text-sm border-b-2 transition whitespace-nowrap" id="tab-deudas">Cuentas por Pagar/Cobrar</button>
-                <button type="button" onclick="switchTab('admin')" class="tab-btn px-5 py-3 font-semibold text-sm border-b-2 transition whitespace-nowrap hidden" id="tab-admin">Panel de Administración</button>
+                <button onclick="switchTab('transacciones')" class="tab-btn px-5 py-3 font-semibold text-sm border-b-2 transition whitespace-nowrap" id="tab-transacciones">Transacciones</button>
+                <button onclick="switchTab('compras')" class="tab-btn px-5 py-3 font-semibold text-sm border-b-2 transition whitespace-nowrap" id="tab-compras">Financiamientos (Cashea)</button>
+                <button onclick="switchTab('deudas')" class="tab-btn px-5 py-3 font-semibold text-sm border-b-2 transition whitespace-nowrap" id="tab-deudas">Cuentas por Pagar/Cobrar</button>
+                <button onclick="switchTab('admin')" class="tab-btn px-5 py-3 font-semibold text-sm border-b-2 transition whitespace-nowrap hidden" id="tab-admin">Panel de Administración</button>
             </div>
 
             <!-- SECCIÓN: TRANSACCIONES -->
@@ -242,7 +228,7 @@
                                     <option value="ingreso">Ingresos</option>
                                     <option value="egreso">Egresos</option>
                                 </select>
-                                <button type="button" onclick="exportData()" class="p-2 bg-slate-900 hover:bg-slate-700 border border-slate-700 rounded-xl text-slate-300 transition" title="Exportar Copia JSON">
+                                <button onclick="exportData()" class="p-2 bg-slate-900 hover:bg-slate-700 border border-slate-700 rounded-xl text-slate-300 transition" title="Exportar Copia JSON">
                                     <i data-lucide="download" class="w-4 h-4"></i>
                                 </button>
                             </div>
@@ -299,25 +285,17 @@
                                     <option value="3">3 Cuotas</option>
                                     <option value="4">4 Cuotas</option>
                                     <option value="6">6 Cuotas</option>
-                                    <option value="9">9 Cuotas</option>
-                                    <option value="12">12 Cuotas</option>
                                 </select>
                             </div>
                             <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition">Dividir & Registrar</button>
                         </form>
                     </div>
 
-                    <!-- Lista de Financiamientos Activos y Pagados (Con sub-pestañas) -->
-                    <div class="lg:col-span-2 bg-slate-800 border border-slate-700 rounded-2xl p-6 space-y-4">
-                        <div class="flex border-b border-slate-700 space-x-6">
-                            <button type="button" onclick="switchCasheaSubTab('activos')" id="cashea-tab-activos" class="font-bold text-sm text-indigo-400 border-b-2 border-indigo-500 pb-2 transition">Financiamientos Activos</button>
-                            <button type="button" onclick="switchCasheaSubTab('pagados')" id="cashea-tab-pagados" class="font-bold text-sm text-slate-400 border-b-2 border-transparent pb-2 transition">Pagos Listos / Pagados</button>
-                        </div>
-                        <div id="purchases-list-activos" class="space-y-4">
-                            <!-- Dinámico Activos -->
-                        </div>
-                        <div id="purchases-list-pagados" class="space-y-4 hidden">
-                            <!-- Dinámico Pagados Completos -->
+                    <!-- Lista de Financiamientos Activos -->
+                    <div class="lg:col-span-2 bg-slate-800 border border-slate-700 rounded-2xl p-6">
+                        <h4 class="font-bold text-lg mb-6 text-slate-200">Planes de Financiamiento</h4>
+                        <div id="purchases-list" class="space-y-4">
+                            <!-- Dinámico -->
                         </div>
                     </div>
                 </div>
@@ -367,8 +345,8 @@
                     <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 space-y-6">
                         <div>
                             <h4 class="font-bold text-lg mb-2 text-slate-200">Sincronización BCV</h4>
-                            <p class="text-xs text-slate-400 mb-4">La tasa se actualiza automáticamente a las 5:00 PM y 7:00 PM (hora de Venezuela) al precio del día siguiente, o puedes forzarla manualmente.</p>
-                            <button type="button" onclick="fetchBCVRate(true)" class="flex items-center justify-center gap-2 w-full bg-slate-900 hover:bg-slate-700 border border-slate-700 text-slate-200 py-3 rounded-xl transition">
+                            <p class="text-xs text-slate-400 mb-4">La tasa se actualiza automáticamente a las 5:00 PM y 7:00 PM (hora de Venezuela) y también puedes forzarla manualmente.</p>
+                            <button onclick="fetchBCVRate(true)" class="flex items-center justify-center gap-2 w-full bg-slate-900 hover:bg-slate-700 border border-slate-700 text-slate-200 py-3 rounded-xl transition">
                                 <i data-lucide="refresh-cw" class="w-4 h-4"></i> Actualizar Tasa Manualmente
                             </button>
                         </div>
@@ -376,7 +354,7 @@
                         <div>
                             <h4 class="font-bold text-lg mb-2 text-slate-200">Eliminación de Datos</h4>
                             <p class="text-xs text-slate-400 mb-4">Esta acción restablecerá por completo toda la base de datos local borrando transacciones, cuotas e historiales.</p>
-                            <button type="button" onclick="dangerWipeDatabase()" class="flex items-center justify-center gap-2 w-full bg-rose-950/40 hover:bg-rose-900 border border-rose-800 text-rose-300 py-3 rounded-xl transition">
+                            <button onclick="dangerWipeDatabase()" class="flex items-center justify-center gap-2 w-full bg-rose-950/40 hover:bg-rose-900 border border-rose-800 text-rose-300 py-3 rounded-xl transition">
                                 <i data-lucide="trash-2" class="w-4 h-4"></i> Restablecer Base de Datos
                             </button>
                         </div>
@@ -407,40 +385,6 @@
 
     </main>
 
-    <!-- BOTÓN FLOTANTE Y CALCULADORA FLOTANTE -->
-    <div class="fixed bottom-6 right-6 z-50">
-        <button type="button" onclick="toggleFloatingCalculator()" class="bg-indigo-600 hover:bg-indigo-500 text-white p-4 rounded-full shadow-2xl flex items-center justify-center transition transform hover:scale-105" title="Abrir Calculadora">
-            <i data-lucide="calculator" class="w-6 h-6"></i>
-        </button>
-    </div>
-
-    <div id="floating-calculator-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4">
-        <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" onclick="toggleFloatingCalculator()"></div>
-        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-sm w-full p-6 relative z-10 shadow-2xl space-y-4">
-            <div class="flex justify-between items-center border-b border-slate-700 pb-3">
-                <h4 class="font-bold text-lg text-indigo-400 flex items-center gap-2">
-                    <i data-lucide="calculator"></i> Calculadora USD / VES
-                </h4>
-                <button type="button" onclick="toggleFloatingCalculator()" class="text-slate-400 hover:text-white p-1 rounded-lg">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
-            </div>
-            <div class="text-xs text-slate-400">Tasa de cambio actual: <span id="calculator-rate" class="font-semibold text-emerald-400">Bs 0.00</span></div>
-            <div class="space-y-4">
-                <div class="bg-slate-900 border border-slate-700 rounded-xl p-4">
-                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">Dólares a Bolívares</label>
-                    <input id="usd-to-ves-input" type="number" step="0.01" value="1" class="w-full bg-slate-800 border border-slate-700 rounded-xl py-2 px-3 text-slate-200 text-sm focus:outline-none focus:border-cyan-500">
-                    <p id="usd-to-ves-result" class="mt-2 text-base font-semibold text-emerald-400">Bs 0.00</p>
-                </div>
-                <div class="bg-slate-900 border border-slate-700 rounded-xl p-4">
-                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">Bolívares a Dólares</label>
-                    <input id="ves-to-usd-input" type="number" step="0.01" value="100" class="w-full bg-slate-800 border border-slate-700 rounded-xl py-2 px-3 text-slate-200 text-sm focus:outline-none focus:border-indigo-500">
-                    <p id="ves-to-usd-result" class="mt-2 text-base font-semibold text-cyan-400">$0.00</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- MODAL GENERAL PARA REGISTRO DE ABONOS -->
     <div id="payment-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4">
         <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onclick="closePaymentModal()"></div>
@@ -453,16 +397,10 @@
                 <input type="hidden" id="modal-target-id">
                 <input type="hidden" id="modal-installment-idx">
 
-                <div class="flex items-center justify-between bg-slate-900/60 p-3 rounded-xl border border-slate-700/50">
-                    <div>
-                        <p class="text-xs text-slate-400 mb-0.5">Monto Máximo Pendiente</p>
-                        <p id="modal-max-amount" class="text-sm font-semibold text-amber-400">$0.00</p>
-                    </div>
-                    <button type="button" onclick="fillModalMaxAmount()" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-3 py-1.5 rounded-lg transition shadow-sm">
-                        Pagar Monto Total
-                    </button>
+                <div>
+                    <p class="text-xs text-slate-400 mb-1">Monto Máximo Pendiente</p>
+                    <p id="modal-max-amount" class="text-sm font-semibold text-amber-400">$0.00</p>
                 </div>
-
                 <div>
                     <label class="block text-xs font-semibold text-slate-400 mb-1.5">Referencia</label>
                     <input type="text" id="modal-pay-referencia" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="Ej. Ref 123456 (Opcional)">
@@ -478,15 +416,8 @@
                 <div>
                     <label class="block text-xs font-semibold text-slate-400 mb-1.5">Método / Moneda de Pago</label>
                     <select id="modal-pay-method" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500">
-                        <option value="USD">Divisas (Dólares / USDT)</option>
-                        <option value="VES">Bolívares (VES)</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">Destino del Pago</label>
-                    <select id="tipoDestinoPago" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500">
-                        <option value="caja">Caja Regular (Afecta saldo de caja)</option>
-                        <option value="externo">Pago Externo (No toca las cajas)</option>
+                        <option value="USD">Divisas (Dólares / USDT) - Se resta de Caja USD</option>
+                        <option value="VES">Bolívares (VES) - Se resta de Caja VES calculando al BCV</option>
                     </select>
                 </div>
                 <div id="modal-conversion-notice" class="hidden text-xs bg-slate-900/80 border border-slate-700/50 p-3 rounded-xl text-emerald-400">
@@ -500,7 +431,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE EDICIÓN UNIVERSAL PARA ADMIN -->
+    <!-- MODAL DE EDICIÓN (transacciones / cuotas) -->
     <div id="edit-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4">
         <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onclick="closeEditModal()"></div>
         <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 relative z-10 shadow-2xl">
@@ -510,23 +441,19 @@
                 <input type="hidden" id="edit-target-id">
                 <input type="hidden" id="edit-installment-idx">
 
-                <div id="edit-field-amount-container">
-                    <label id="edit-amount-label" class="block text-xs font-semibold text-slate-400 mb-1.5">Monto</label>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">Monto</label>
                     <input type="number" id="edit-amount" step="0.01" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500">
                 </div>
-                <div id="edit-field-date-container">
+                <div>
                     <label class="block text-xs font-semibold text-slate-400 mb-1.5">Fecha</label>
                     <input type="date" id="edit-date" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500">
                 </div>
-                <div id="edit-field-desc-container">
-                    <label id="edit-desc-label" class="block text-xs font-semibold text-slate-400 mb-1.5">Descripción / Concepto</label>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">Descripción</label>
                     <input type="text" id="edit-description" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500">
                 </div>
-                <div id="edit-field-person-container" class="hidden">
-                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">Persona / Cliente</label>
-                    <input type="text" id="edit-person" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500">
-                </div>
-                <div id="edit-field-moneda-container">
+                <div>
                     <label class="block text-xs font-semibold text-slate-400 mb-1.5">Moneda</label>
                     <select id="edit-moneda" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500">
                         <option value="USD">USD</option>
@@ -543,36 +470,15 @@
 
     <!-- LOGICA DE LA APLICACIÓN -->
     <script>
-        window.FIREBASE_CONFIG = window.FIREBASE_CONFIG || {
-            apiKey: "AIzaSyA94Q9d6si6jTxfNYohs1dr5zPRoxWzopk",
-            authDomain: "gestionesonlineve.firebaseapp.com",
-            projectId: "gestionesonlineve",
-            storageBucket: "gestionesonlineve.firebasestorage.app",
-            messagingSenderId: "731768078629",
-            appId: "1:731768078629:web:c379d28a318c73dc64dacc",
-            measurementId: "G-NCB5ZYGRXC"
+        window.SUPABASE_CONFIG = window.SUPABASE_CONFIG || {
+            url: "https://hosbzqfmjwahiwthuhmh.supabase.co",
+            anonKey: "sb_publishable_M3V0y48Nm5Gk2yufOJr5wQ_CeInbw9c"
         };
-
-        // --- CONFIGURACIÓN DE SUPABASE (CON PROTECCIÓN) ---
-        const SUPABASE_URL = 'https://hosbzqfmjwahiwthuhmh.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_M3V0y48Nm5Gk2yufOJr5wQ_CeInbw9c';
-        let supabase = null;
-        try {
-            if (window.supabase && typeof window.supabase.createClient === 'function') {
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                console.log('Supabase inicializado correctamente');
-            } else {
-                console.warn('Supabase JS no disponible, se usará solo almacenamiento local');
-            }
-        } catch (e) {
-            console.warn('Error al inicializar Supabase, se usará solo almacenamiento local:', e);
-            supabase = null;
-        }
 
         // --- 1. CONFIGURACIÓN DE LA BASE DE DATOS LOCAL (DEXIE) ---
         const db = new Dexie("InterFinanzasDB");
         db.version(1).stores({
-            usuarios: '++id, &username, role, nombre',
+            usuarios: '++id, &username, role',
             transacciones: '++id, fecha, tipo, monto, moneda, descripcion, userId',
             compras: '++id, item, total, downpayment, totalInstallments, installments, status, userId',
             deudas: '++id, tipo, persona, concepto, montoTotal, montoPendiente, status, userId',
@@ -581,29 +487,14 @@
 
         // --- 2. VARIABLES DE ESTADO ---
         let currentUser = null;
-        let bcvRate = 732.48; 
-        let euroRate = 838.07; 
-        let binanceRate = 839.34; 
+        let bcvRate = 732.48; // Valor de respaldo inicial por si falla la conexión externa (Tasas reales de 2026)
+        let euroRate = 838.07; // Valor de respaldo inicial
+        let binanceRate = 839.34; // Valor de respaldo inicial
         let currentTxType = 'ingreso';
         let currentDebtType = 'cobrar';
         let lastScheduledBcvRefreshKey = null;
-        let firestoreDb = null;
+        let supabaseClient = null;
         let cloudSyncEnabled = false;
-
-        // --- ACORDEÓN EXPANDIBLE / COLAPSABLE ---
-        window.toggleCardAccordion = function(prefix, id) {
-            const content = document.getElementById(`${prefix}-content-${id}`);
-            const icon = document.getElementById(`${prefix}-icon-${id}`);
-            const isHidden = content.classList.contains('hidden');
-
-            document.querySelectorAll(`.${prefix}-accordion-content`).forEach(el => el.classList.add('hidden'));
-            document.querySelectorAll(`.${prefix}-accordion-icon`).forEach(el => el.style.transform = 'rotate(0deg)');
-
-            if (isHidden) {
-                content.classList.remove('hidden');
-                if (icon) icon.style.transform = 'rotate(180deg)';
-            }
-        };
 
         function getCaracasDate(date = new Date()) {
             const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -635,22 +526,11 @@
             });
         }
 
-        function getEquivUsdHtml(usdAmount) {
-            const vesVal = usdAmount * (bcvRate || 1);
-            return `<span class="block text-[11px] text-slate-400 font-normal">Bs ${formatNumber(vesVal)}</span>`;
-        }
-
-        function getEquivVesHtml(vesAmount) {
-            const usdVal = vesAmount / (bcvRate || 1);
-            return `<span class="block text-[11px] text-slate-400 font-normal">$${formatNumber(usdVal)}</span>`;
-        }
-
-        function isFirebaseConfigValid(config) {
+        function isSupabaseConfigValid(config) {
             if (!config || typeof config !== 'object') return false;
-            const invalidValues = ['TU_API_KEY', 'TU_PROJECT_ID', 'TU_MESSAGING_SENDER_ID', 'TU_APP_ID', 'your-project-id', 'YOUR_PROJECT_ID', 'YOUR_API_KEY', 'YOUR_APP_ID'];
-            return config.apiKey && !invalidValues.includes(config.apiKey)
-                && config.projectId && !invalidValues.includes(config.projectId)
-                && config.appId && !invalidValues.includes(config.appId);
+            const invalidValues = ['TU_SUPABASE_URL', 'TU_ANON_KEY', 'your-supabase-url', 'your-anon-key'];
+            return config.url && !invalidValues.includes(config.url)
+                && config.anonKey && !invalidValues.includes(config.anonKey);
         }
 
         function updateCalculator() {
@@ -662,12 +542,9 @@
             const usdAmount = parseFloat(usdInput.value) || 0;
             const vesAmount = parseFloat(vesInput.value) || 0;
 
-            const rateDisplay = document.getElementById('calculator-rate');
-            if (rateDisplay) rateDisplay.textContent = `Bs ${rate.toFixed(2)}`;
-            const usdRes = document.getElementById('usd-to-ves-result');
-            if (usdRes) usdRes.textContent = `Bs ${formatNumber(usdAmount * rate)}`;
-            const vesRes = document.getElementById('ves-to-usd-result');
-            if (vesRes) vesRes.textContent = `$${formatNumber(vesAmount / (rate || 1))}`;
+            document.getElementById('calculator-rate').textContent = `Bs ${rate.toFixed(2)}`;
+            document.getElementById('usd-to-ves-result').textContent = `Bs ${formatNumber(usdAmount * rate)}`;
+            document.getElementById('ves-to-usd-result').textContent = `$${formatNumber(vesAmount / (rate || 1))}`;
         }
 
         function setupCalculatorInputs() {
@@ -677,14 +554,6 @@
 
             usdInput.addEventListener('input', updateCalculator);
             vesInput.addEventListener('input', updateCalculator);
-        }
-
-        function toggleFloatingCalculator() {
-            const modal = document.getElementById('floating-calculator-modal');
-            if (modal) {
-                modal.classList.toggle('hidden');
-                updateCalculator();
-            }
         }
 
         function setupBcvAutoRefresh() {
@@ -712,29 +581,28 @@
             return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
         }
 
-        async function initializeCloudSync() {
+        async function initializeSupabaseSync() {
             try {
-                const config = window.FIREBASE_CONFIG || null;
-                if (!isFirebaseConfigValid(config)) {
+                const config = window.SUPABASE_CONFIG || null;
+                if (!isSupabaseConfigValid(config)) {
                     cloudSyncEnabled = false;
                     return;
                 }
-                if (!window.firebase || !window.firebase.apps) {
+                if (typeof supabase === 'undefined' || !supabase.createClient) {
                     cloudSyncEnabled = false;
+                    console.warn('Supabase JS client no está disponible.');
                     return;
                 }
-                if (!firebase.apps.length) {
-                    firebase.initializeApp(config);
-                }
-                firestoreDb = firebase.firestore();
+                supabaseClient = supabase.createClient(config.url, config.anonKey);
                 cloudSyncEnabled = true;
+                console.log('Supabase sincronización inicializada correctamente.');
             } catch (err) {
-                console.warn('No se pudo inicializar Firestore. Se usará solo almacenamiento local.', err);
+                console.warn('No se pudo inicializar Supabase. Se usará solo almacenamiento local.', err);
                 cloudSyncEnabled = false;
             }
         }
 
-        async function ensureLocalUserRecord(username, passwordHash, role = 'user', nombre = '') {
+        async function ensureLocalUserRecord(username, passwordHash, role = 'user') {
             let user = await db.usuarios.get({ username });
             if (user) {
                 if (passwordHash && user.password !== passwordHash) {
@@ -744,12 +612,12 @@
                 return user;
             }
 
-            const id = await db.usuarios.add({ username, password: passwordHash, role, nombre });
-            return { id, username, password: passwordHash, role, nombre };
+            const id = await db.usuarios.add({ username, password: passwordHash, role });
+            return { id, username, password: passwordHash, role };
         }
 
-        async function syncCurrentUserDataToCloud() {
-            if (!cloudSyncEnabled || !currentUser || !firestoreDb) return;
+        async function syncCurrentUserDataToSupabase() {
+            if (!cloudSyncEnabled || !currentUser || !supabaseClient) return;
 
             try {
                 const txs = await db.transacciones.where('userId').equals(currentUser.id).toArray();
@@ -757,69 +625,259 @@
                 const deudas = await db.deudas.where('userId').equals(currentUser.id).toArray();
                 const configuracion = await db.configuracion.toArray();
 
-                await firestoreDb.collection('finanzas_users').doc(currentUser.username).set({
-                    username: currentUser.username,
-                    password: currentUser.password,
-                    role: currentUser.role,
-                    nombre: currentUser.nombre || '',
-                    updatedAt: Date.now(),
-                    data: {
-                        transacciones: txs.map(item => ({ ...item, userId: currentUser.id })),
-                        compras: compras.map(item => ({ ...item, userId: currentUser.id })),
-                        deudas: deudas.map(item => ({ ...item, userId: currentUser.id })),
-                        configuracion
+                // Sincronizar usuario
+                const { data: existingUser } = await supabaseClient
+                    .from('usuarios')
+                    .select('id')
+                    .eq('username', currentUser.username)
+                    .single();
+
+                if (existingUser) {
+                    await supabaseClient
+                        .from('usuarios')
+                        .update({ password: currentUser.password, role: currentUser.role })
+                        .eq('id', existingUser.id);
+                } else {
+                    await supabaseClient
+                        .from('usuarios')
+                        .insert({ username: currentUser.username, password: currentUser.password, role: currentUser.role });
+                }
+
+                // Sincronizar transacciones
+                for (const tx of txs) {
+                    const { data: existingTx } = await supabaseClient
+                        .from('transacciones')
+                        .select('id')
+                        .eq('id', tx.id)
+                        .single();
+
+                    if (!existingTx) {
+                        await supabaseClient.from('transacciones').insert({
+                            id: tx.id,
+                            fecha: tx.fecha,
+                            tipo: tx.tipo,
+                            monto: tx.monto,
+                            moneda: tx.moneda,
+                            descripcion: tx.descripcion,
+                            referencia: tx.referencia || '',
+                            user_id: currentUser.id
+                        });
+                    } else {
+                        await supabaseClient
+                            .from('transacciones')
+                            .update({
+                                fecha: tx.fecha,
+                                tipo: tx.tipo,
+                                monto: tx.monto,
+                                moneda: tx.moneda,
+                                descripcion: tx.descripcion,
+                                referencia: tx.referencia || ''
+                            })
+                            .eq('id', tx.id);
                     }
-                }, { merge: true });
+                }
+
+                // Sincronizar compras
+                for (const compra of compras) {
+                    const { data: existingCompra } = await supabaseClient
+                        .from('compras')
+                        .select('id')
+                        .eq('id', compra.id)
+                        .single();
+
+                    if (!existingCompra) {
+                        await supabaseClient.from('compras').insert({
+                            id: compra.id,
+                            item: compra.item,
+                            total: compra.total,
+                            downpayment: compra.downpayment,
+                            total_installments: compra.totalInstallments,
+                            initial_payment_date: compra.initialPaymentDate || 0,
+                            installments: JSON.stringify(compra.installments),
+                            status: compra.status,
+                            user_id: currentUser.id
+                        });
+                    } else {
+                        await supabaseClient
+                            .from('compras')
+                            .update({
+                                item: compra.item,
+                                total: compra.total,
+                                downpayment: compra.downpayment,
+                                total_installments: compra.totalInstallments,
+                                initial_payment_date: compra.initialPaymentDate || 0,
+                                installments: JSON.stringify(compra.installments),
+                                status: compra.status
+                            })
+                            .eq('id', compra.id);
+                    }
+                }
+
+                // Sincronizar deudas
+                for (const deuda of deudas) {
+                    const { data: existingDeuda } = await supabaseClient
+                        .from('deudas')
+                        .select('id')
+                        .eq('id', deuda.id)
+                        .single();
+
+                    if (!existingDeuda) {
+                        await supabaseClient.from('deudas').insert({
+                            id: deuda.id,
+                            tipo: deuda.tipo,
+                            persona: deuda.persona,
+                            concepto: deuda.concepto,
+                            monto_total: deuda.montoTotal,
+                            monto_pendiente: deuda.montoPendiente,
+                            status: deuda.status,
+                            user_id: currentUser.id
+                        });
+                    } else {
+                        await supabaseClient
+                            .from('deudas')
+                            .update({
+                                tipo: deuda.tipo,
+                                persona: deuda.persona,
+                                concepto: deuda.concepto,
+                                monto_total: deuda.montoTotal,
+                                monto_pendiente: deuda.montoPendiente,
+                                status: deuda.status
+                            })
+                            .eq('id', deuda.id);
+                    }
+                }
+
+                // Sincronizar configuración
+                for (const cfg of configuracion) {
+                    const { data: existingCfg } = await supabaseClient
+                        .from('configuracion')
+                        .select('id')
+                        .eq('key', cfg.key)
+                        .eq('user_id', currentUser.id)
+                        .single();
+
+                    if (!existingCfg) {
+                        await supabaseClient.from('configuracion').insert({
+                            key: cfg.key,
+                            value: cfg.value,
+                            user_id: currentUser.id
+                        });
+                    } else {
+                        await supabaseClient
+                            .from('configuracion')
+                            .update({ value: cfg.value })
+                            .eq('id', existingCfg.id);
+                    }
+                }
             } catch (err) {
-                console.warn('No se pudo sincronizar con Firestore.', err);
+                console.warn('No se pudo sincronizar con Supabase.', err);
             }
         }
 
-        async function hydrateCurrentUserFromCloud(userRecord) {
-            if (!cloudSyncEnabled || !firestoreDb || !userRecord) return;
+        async function hydrateCurrentUserFromSupabase(userRecord) {
+            if (!cloudSyncEnabled || !supabaseClient || !userRecord) return;
 
             try {
-                const snap = await firestoreDb.collection('finanzas_users').doc(userRecord.username).get();
-                if (!snap.exists) {
-                    await syncCurrentUserDataToCloud();
+                // Obtener datos del usuario desde Supabase
+                const { data: remoteUser, error } = await supabaseClient
+                    .from('usuarios')
+                    .select('*')
+                    .eq('username', userRecord.username)
+                    .single();
+
+                if (error || !remoteUser) {
+                    // Si no existe en Supabase, subir datos locales
+                    await syncCurrentUserDataToSupabase();
                     return;
                 }
 
-                const remoteUser = snap.data();
                 if (remoteUser.password && remoteUser.password !== userRecord.password) {
                     return;
                 }
 
-                const userData = remoteUser.data || {};
+                // Obtener transacciones desde Supabase
+                const { data: remoteTxs } = await supabaseClient
+                    .from('transacciones')
+                    .select('*')
+                    .eq('user_id', userRecord.id);
+
+                // Obtener compras desde Supabase
+                const { data: remoteCompras } = await supabaseClient
+                    .from('compras')
+                    .select('*')
+                    .eq('user_id', userRecord.id);
+
+                // Obtener deudas desde Supabase
+                const { data: remoteDeudas } = await supabaseClient
+                    .from('deudas')
+                    .select('*')
+                    .eq('user_id', userRecord.id);
+
+                // Obtener configuración desde Supabase
+                const { data: remoteConfig } = await supabaseClient
+                    .from('configuracion')
+                    .select('*')
+                    .eq('user_id', userRecord.id);
+
+                // Sincronizar datos remotos a local
                 await db.transaction('rw', db.transacciones, db.compras, db.deudas, db.configuracion, async () => {
                     await db.transacciones.where('userId').equals(userRecord.id).delete();
                     await db.compras.where('userId').equals(userRecord.id).delete();
                     await db.deudas.where('userId').equals(userRecord.id).delete();
 
-                    for (const item of userData.transacciones || []) {
-                        await db.transacciones.add({ ...item, userId: userRecord.id });
+                    for (const item of remoteTxs || []) {
+                        await db.transacciones.add({
+                            id: item.id,
+                            fecha: item.fecha,
+                            tipo: item.tipo,
+                            monto: parseFloat(item.monto),
+                            moneda: item.moneda,
+                            descripcion: item.descripcion,
+                            referencia: item.referencia || '',
+                            userId: userRecord.id
+                        });
                     }
-                    for (const item of userData.compras || []) {
-                        await db.compras.add({ ...item, userId: userRecord.id });
+                    for (const item of remoteCompras || []) {
+                        await db.compras.add({
+                            id: item.id,
+                            item: item.item,
+                            total: parseFloat(item.total),
+                            downpayment: parseFloat(item.downpayment),
+                            totalInstallments: item.total_installments,
+                            initialPaymentDate: item.initial_payment_date || 0,
+                            installments: typeof item.installments === 'string' ? JSON.parse(item.installments) : (item.installments || []),
+                            status: item.status,
+                            userId: userRecord.id
+                        });
                     }
-                    for (const item of userData.deudas || []) {
-                        await db.deudas.add({ ...item, userId: userRecord.id });
+                    for (const item of remoteDeudas || []) {
+                        await db.deudas.add({
+                            id: item.id,
+                            tipo: item.tipo,
+                            persona: item.persona,
+                            concepto: item.concepto,
+                            montoTotal: parseFloat(item.monto_total),
+                            montoPendiente: parseFloat(item.monto_pendiente),
+                            status: item.status,
+                            userId: userRecord.id
+                        });
                     }
-                    for (const item of userData.configuracion || []) {
-                        await db.configuracion.put(item);
+                    for (const item of remoteConfig || []) {
+                        await db.configuracion.put({ key: item.key, value: item.value });
                     }
                 });
 
-                await syncCurrentUserDataToCloud();
+                // Subir cambios locales que no existan en remoto
+                await syncCurrentUserDataToSupabase();
             } catch (err) {
-                console.warn('No se pudo cargar la información remota del usuario.', err);
+                console.warn('No se pudo cargar la información remota del usuario desde Supabase.', err);
             }
         }
 
         // --- 4. INICIALIZACIÓN ---
         document.addEventListener('DOMContentLoaded', async () => {
             lucide.createIcons();
-            await initializeCloudSync();
+            await initializeSupabaseSync();
             await checkSeedUsers();
             setupCalculatorInputs();
             await fetchBCVRate();
@@ -832,23 +890,26 @@
             setupEventListeners();
         });
 
+        // Seed de usuario por defecto
         async function checkSeedUsers() {
             const count = await db.usuarios.count();
             if (count === 0) {
                 const adminHash = await hashPassword('271192');
-                const adminUser = await ensureLocalUserRecord('Anghel', adminHash, 'admin', 'Angel Zurita');
+                const adminUser = await ensureLocalUserRecord('Anghel', adminHash, 'admin');
                 currentUser = adminUser;
-                await syncCurrentUserDataToCloud();
+                await syncCurrentUserDataToSupabase();
                 currentUser = null;
             }
         }
 
+        // Obtener la tasa del BCV, Euro y Binance
         async function fetchBCVRate(forced = false) {
             const now = Date.now();
             const storedUpdated = await db.configuracion.get('bcv_last_updated');
             const needsUpdate = forced || !storedUpdated || (now - parseInt(storedUpdated.value)) > 12 * 60 * 60 * 1000;
 
             if (needsUpdate) {
+                // --- 1. USD BCV ---
                 try {
                     const response = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
                     const data = await response.json();
@@ -863,6 +924,7 @@
                     if (stored) bcvRate = parseFloat(stored.value);
                 }
 
+                // --- 2. EUR BCV ---
                 try {
                     const responseEuro = await fetch('https://ve.dolarapi.com/v1/euros/oficial');
                     const dataEuro = await responseEuro.json();
@@ -876,6 +938,7 @@
                     if (stored) euroRate = parseFloat(stored.value);
                 }
 
+                // --- 3. BINANCE P2P / PARALELO ---
                 try {
                     const responseBinance = await fetch('https://criptoya.com/api/binancep2p/usdt/ves');
                     const dataBinance = await responseBinance.json();
@@ -886,19 +949,24 @@
                         throw new Error("Respuesta de CriptoYa inválida");
                     }
                 } catch (e) {
+                    console.warn("Fallo al obtener tasa Binance P2P de CriptoYa. Intentando Paralelo de DolarAPI.", e);
                     try {
                         const responseParalelo = await fetch('https://ve.dolarapi.com/v1/dolares/paralelo');
                         const dataParalelo = await responseParalelo.json();
                         if (dataParalelo && dataParalelo.promedio) {
                             binanceRate = parseFloat(dataParalelo.promedio);
                             await db.configuracion.put({ key: 'binance_rate', value: binanceRate });
+                        } else {
+                            throw new Error("Respuesta de DolarAPI paralelo inválida");
                         }
                     } catch (errPar) {
+                        console.warn("Fallo al obtener paralelo fallback", errPar);
                         const stored = await db.configuracion.get('binance_rate');
                         if (stored) binanceRate = parseFloat(stored.value);
                     }
                 }
             } else {
+                // Cargar de caché local
                 const storedRate = await db.configuracion.get('bcv_rate');
                 if (storedRate) bcvRate = parseFloat(storedRate.value);
                 const storedEuro = await db.configuracion.get('euro_rate');
@@ -913,9 +981,9 @@
             const binanceDisplay = document.getElementById('binance-rate-display');
             if (binanceDisplay) binanceDisplay.innerText = `Bs ${binanceRate.toFixed(2)}`;
             updateCalculator();
-            updateBalancesAndDashboards();
         }
 
+        // Control de Sesión
         async function checkSession() {
             const session = localStorage.getItem('activeUserSession');
             if (session) {
@@ -926,17 +994,19 @@
                         currentUser = dbUser;
                         showDashboard();
                         if (cloudSyncEnabled) {
-                            hydrateCurrentUserFromCloud(currentUser).catch(() => {});
+                            hydrateCurrentUserFromSupabase(currentUser).catch(() => {});
                         }
                         return;
                     }
                 } catch (err) {
+                    console.warn('Sesión corrupta detectada, se eliminará y se mostrará el login.', err);
                     localStorage.removeItem('activeUserSession');
                 }
             }
             showAuth();
         }
 
+        // Navegación Visual entre Pantallas
         function showAuth() {
             document.getElementById('auth-section').classList.remove('hidden');
             document.getElementById('dashboard-section').classList.add('hidden');
@@ -947,7 +1017,7 @@
             document.getElementById('auth-section').classList.add('hidden');
             document.getElementById('dashboard-section').classList.remove('hidden');
             document.getElementById('user-profile-nav').classList.remove('hidden');
-            document.getElementById('nav-username').innerText = currentUser.nombre || currentUser.username;
+            document.getElementById('nav-username').innerText = currentUser.username;
             document.getElementById('nav-role').innerText = currentUser.role === 'admin' ? 'Administrador' : 'Gestor';
             
             if (currentUser.role === 'admin') {
@@ -974,63 +1044,35 @@
             activeBtn.classList.add('border-indigo-500', 'text-indigo-400');
         }
 
-        function switchCasheaSubTab(subTab) {
-            const actBtn = document.getElementById('cashea-tab-activos');
-            const pagBtn = document.getElementById('cashea-tab-pagados');
-            const actList = document.getElementById('purchases-list-activos');
-            const pagList = document.getElementById('purchases-list-pagados');
-
-            if (subTab === 'activos') {
-                actBtn.className = "font-bold text-sm text-indigo-400 border-b-2 border-indigo-500 pb-2 transition";
-                pagBtn.className = "font-bold text-sm text-slate-400 border-b-2 border-transparent pb-2 transition";
-                actList.classList.remove('hidden');
-                pagList.classList.add('hidden');
-            } else {
-                pagBtn.className = "font-bold text-sm text-indigo-400 border-b-2 border-indigo-500 pb-2 transition";
-                actBtn.className = "font-bold text-sm text-slate-400 border-b-2 border-transparent pb-2 transition";
-                pagList.classList.remove('hidden');
-                actList.classList.add('hidden');
-            }
-        }
-
         // --- 6. EVENT LISTENERS ---
         function setupEventListeners() {
+            // Cambio entre Inicio de Sesión y Registro
             const authToggle = document.getElementById('toggle-auth-mode');
             authToggle.addEventListener('click', () => {
                 const isLogin = document.getElementById('auth-title').innerText === 'Iniciar Sesión';
                 document.getElementById('auth-title').innerText = isLogin ? 'Crear una Cuenta' : 'Iniciar Sesión';
                 document.getElementById('auth-subtitle').innerText = isLogin ? 'Únete al sistema de control de caja' : 'Accede para gestionar tus finanzas';
                 authToggle.innerText = isLogin ? '¿Ya tienes cuenta? Inicia sesión aquí' : '¿No tienes cuenta? Regístrate aquí';
-                
-                const registerFields = document.getElementById('register-fields');
-                const confirmPassContainer = document.getElementById('confirm-password-container');
-                const submitBtn = document.getElementById('auth-submit-btn');
-
-                if (isLogin) {
-                    registerFields.classList.remove('hidden');
-                    confirmPassContainer.classList.remove('hidden');
-                    submitBtn.innerText = 'Registrarse';
-                } else {
-                    registerFields.classList.add('hidden');
-                    confirmPassContainer.classList.add('hidden');
-                    submitBtn.innerText = 'Entrar a la Plataforma';
-                }
             });
 
+            // Manejador del Formulario de Autenticación
             document.getElementById('auth-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const username = document.getElementById('auth-username').value.trim();
                 const rawPassword = document.getElementById('auth-password').value;
+                const hashedPassword = await hashPassword(rawPassword);
                 const isLogin = document.getElementById('auth-title').innerText === 'Iniciar Sesión';
 
                 if (isLogin) {
-                    const hashedPassword = await hashPassword(rawPassword);
                     let matchedUser = await db.usuarios.get({ username: username, password: hashedPassword });
-                    if (!matchedUser && cloudSyncEnabled) {
-                        const remoteDoc = firestoreDb.collection('finanzas_users').doc(username);
-                        const snap = await remoteDoc.get();
-                        if (snap.exists && snap.data().password === hashedPassword) {
-                            matchedUser = await ensureLocalUserRecord(username, hashedPassword, snap.data().role || 'user', snap.data().nombre || '');
+                    if (!matchedUser && cloudSyncEnabled && supabaseClient) {
+                        const { data: remoteUser } = await supabaseClient
+                            .from('usuarios')
+                            .select('*')
+                            .eq('username', username)
+                            .single();
+                        if (remoteUser && remoteUser.password === hashedPassword) {
+                            matchedUser = await ensureLocalUserRecord(username, hashedPassword, remoteUser.role || 'user');
                         }
                     }
 
@@ -1040,55 +1082,52 @@
                         document.getElementById('auth-form').reset();
                         showDashboard();
                         if (cloudSyncEnabled) {
-                            hydrateCurrentUserFromCloud(currentUser).catch(() => {});
+                            hydrateCurrentUserFromSupabase(currentUser).catch(() => {});
                         }
                     } else {
                         alert("Las credenciales introducidas no coinciden o no existen.");
                     }
                 } else {
-                    const confirmPassword = document.getElementById('auth-password-confirm').value;
-                    if (rawPassword !== confirmPassword) {
-                        alert("Las contraseñas no coinciden. Por favor, revísalas.");
-                        return;
-                    }
-
-                    const fullName = document.getElementById('auth-name').value.trim();
-                    const selectedRole = document.getElementById('auth-role-select').value;
-                    const hashedPassword = await hashPassword(rawPassword);
-
                     const existing = await db.usuarios.get({ username });
                     if (existing) {
                         alert("El nombre de usuario ya se encuentra registrado.");
                         return;
                     }
-                    const newUser = await ensureLocalUserRecord(username, hashedPassword, selectedRole, fullName);
+                    const newUser = await ensureLocalUserRecord(username, hashedPassword, 'user');
                     currentUser = newUser;
-                    if (cloudSyncEnabled && firestoreDb) {
-                        await firestoreDb.collection('finanzas_users').doc(username).set({
-                            username,
-                            password: hashedPassword,
-                            role: selectedRole,
-                            nombre: fullName,
-                            updatedAt: Date.now(),
-                            data: { transacciones: [], compras: [], deudas: [], configuracion: [] }
-                        }, { merge: true });
+                    if (cloudSyncEnabled && supabaseClient) {
+                        const { data: existingUser } = await supabaseClient
+                            .from('usuarios')
+                            .select('id')
+                            .eq('username', username)
+                            .single();
+                        if (!existingUser) {
+                            await supabaseClient.from('usuarios').insert({
+                                username,
+                                password: hashedPassword,
+                                role: 'user'
+                            });
+                        }
                     }
-                    await syncCurrentUserDataToCloud();
+                    await syncCurrentUserDataToSupabase();
                     localStorage.setItem('activeUserSession', JSON.stringify({ username }));
                     document.getElementById('auth-form').reset();
                     showDashboard();
                 }
             });
 
+            // Cierre de sesión
             document.getElementById('btn-logout').addEventListener('click', () => {
                 currentUser = null;
                 localStorage.removeItem('activeUserSession');
                 showAuth();
             });
 
+            // Conmutador de Tipo de Transacción
             document.getElementById('tx-type-ingreso').addEventListener('click', () => setTxType('ingreso'));
             document.getElementById('tx-type-egreso').addEventListener('click', () => setTxType('egreso'));
 
+            // Envío de Transacción manual
             document.getElementById('tx-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 if (!currentUser) {
@@ -1116,8 +1155,7 @@
                     }
                 }
 
-                // Guardado local (IndexedDB)
-                await db.transacciones.add({
+                        await db.transacciones.add({
                     fecha: txTimestamp,
                     tipo: currentTxType,
                     monto,
@@ -1127,43 +1165,17 @@
                     userId: currentUser.id
                 });
 
-                // ==========================================
-                // ENVÍO DIRECTO A LA NUEVA TABLA DE SUPABASE (SI ESTÁ DISPONIBLE)
-                // ==========================================
-                if (supabase) {
-                    try {
-                        const { error: sError } = await supabase
-                            .from('transacciones')
-                            .insert([
-                                { 
-                                    monto: monto,
-                                    moneda: moneda,
-                                    descripcion: descripcion,
-                                    referencia: referencia,
-                                    tipo: currentTxType
-                                }
-                            ]);
-
-                        if (sError) {
-                            console.warn('Supabase insert error (no crítico):', sError.message);
-                        } else {
-                            console.log('Transacción guardada en Supabase con éxito');
-                        }
-                    } catch (supaErr) {
-                        console.warn('Supabase no disponible, transacción guardada solo localmente:', supaErr);
-                    }
-                }
-                // ==========================================
-
-                syncCurrentUserDataToCloud().catch(() => {});
+                syncCurrentUserDataToSupabase().catch(() => {});
                 document.getElementById('tx-form').reset();
                 setTxType('ingreso');
                 await updateBalancesAndDashboards();
             });
 
+            // Conmutador de Tipo de Deuda / Cobro
             document.getElementById('debt-type-cobrar').addEventListener('click', () => setDebtType('cobrar'));
             document.getElementById('debt-type-pagar').addEventListener('click', () => setDebtType('pagar'));
 
+            // Envío de Deuda manual
             document.getElementById('debt-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 if (!currentUser) {
@@ -1189,24 +1201,13 @@
                     userId: currentUser.id
                 });
 
-                const txType = currentDebtType === 'cobrar' ? 'egreso' : 'ingreso';
-                const txDesc = currentDebtType === 'cobrar' ? `Préstamo otorgado / Por Cobrar: ${concepto} (${persona})` : `Préstamo recibido / Por Pagar: ${concepto} (${persona})`;
-
-                await db.transacciones.add({
-                    fecha: Date.now(),
-                    tipo: txType,
-                    monto: monto,
-                    moneda: 'USD',
-                    descripcion: txDesc,
-                    userId: currentUser.id
-                });
-
-                syncCurrentUserDataToCloud().catch(() => {});
+                syncCurrentUserDataToSupabase().catch(() => {});
                 document.getElementById('debt-form').reset();
                 setDebtType('cobrar');
                 await updateBalancesAndDashboards();
             });
 
+            // Envío de Financiamiento (Cashea)
             document.getElementById('purchase-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 if (!currentUser) {
@@ -1234,6 +1235,7 @@
                     return;
                 }
 
+                // Cálculo de las cuotas con redondeo correcto
                 const remaining = total - downpayment;
                 const baseInstallment = Math.floor((remaining / totalInstallments) * 100) / 100;
                 const remainder = Math.round((remaining - (baseInstallment * totalInstallments)) * 100) / 100;
@@ -1242,13 +1244,14 @@
                 for (let i = 1; i <= totalInstallments; i++) {
                     installments.push({
                         installmentNumber: i,
-                        dueDate: firstPaymentTimestamp + (i * 14 * 24 * 60 * 60 * 1000),
+                        dueDate: firstPaymentTimestamp + (i * 14 * 24 * 60 * 60 * 1000), // Cada 14 días desde la fecha inicial
                         amount: i === totalInstallments ? baseInstallment + remainder : baseInstallment,
                         status: 'pendiente',
                         paidAmount: 0
                     });
                 }
 
+                // Guardar la compra
                 await db.compras.add({
                     item,
                     total,
@@ -1260,11 +1263,24 @@
                     userId: currentUser.id
                 });
 
-                await syncCurrentUserDataToCloud();
+                syncCurrentUserDataToSupabase().catch(() => {});
+
+                // Registrar de forma automática la inicial como un egreso de Caja USD
+                await db.transacciones.add({
+                    fecha: firstPaymentTimestamp,
+                    tipo: 'egreso',
+                    monto: downpayment,
+                    moneda: 'USD',
+                    descripcion: `Inicial financiamiento: ${item}`,
+                    userId: currentUser.id
+                });
+
+                await syncCurrentUserDataToSupabase();
                 document.getElementById('purchase-form').reset();
                 await updateBalancesAndDashboards();
             });
 
+            // Lógica de cálculo en vivo de conversión de moneda en el Modal
             const modalPayAmountInput = document.getElementById('modal-pay-amount');
             const modalPayMethodSelect = document.getElementById('modal-pay-method');
             const conversionNotice = document.getElementById('modal-conversion-notice');
@@ -1284,6 +1300,7 @@
             modalPayAmountInput.addEventListener('input', updateModalConversionNotice);
             modalPayMethodSelect.addEventListener('change', updateModalConversionNotice);
 
+            // Guardar Pago de Modal
             document.getElementById('modal-payment-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const targetType = document.getElementById('modal-target-type').value;
@@ -1291,7 +1308,6 @@
                 const instIdx = parseInt(document.getElementById('modal-installment-idx').value);
                 const payAmount = parseFloat(modalPayAmountInput.value);
                 const payMethod = modalPayMethodSelect.value;
-                const tipoDestino = document.getElementById('tipoDestinoPago').value;
                 const payDate = document.getElementById('modal-pay-date').value || new Date().toISOString().split('T')[0];
                 const payReferencia = document.getElementById('modal-pay-referencia').value.trim();
 
@@ -1315,72 +1331,29 @@
                             return;
                         }
 
+                        // Actualizar la cuota específica
                         inst.paidAmount += payAmount;
                         if (inst.paidAmount >= inst.amount) {
                             inst.status = 'pagado';
                         }
                         
+                        // Validar estado global de la compra
                         const allPaid = purchase.installments.every(i => i.status === 'pagado');
                         purchase.status = allPaid ? 'pagado' : 'pendiente';
                         
                         await db.compras.put(purchase);
 
-                        if (tipoDestino === 'caja') {
-                            await db.transacciones.add({
-                                fecha: new Date(`${payDate}T12:00:00`).getTime(),
-                                tipo: 'egreso',
-                                monto: payMethod === 'VES' ? (payAmount * bcvRate) : payAmount,
-                                moneda: payMethod,
-                                descripcion: `Abono Cuota N°${inst.installmentNumber} de: ${purchase.item}`,
-                                referencia: payReferencia,
-                                userId: currentUser.id
-                            });
-                        }
-                        syncCurrentUserDataToCloud().catch(() => {});
-                    }
-                } else if (targetType === 'cashea_total') {
-                    const purchase = await db.compras.get(targetId);
-                    if (purchase) {
-                        const totalPaidSoFar = purchase.installments.reduce((s, i) => s + i.paidAmount, 0);
-                        const totalRemainingGlobal = (purchase.total - purchase.downpayment) - totalPaidSoFar;
-
-                        if (payAmount > totalRemainingGlobal) {
-                            alert("No puedes abonar un monto superior al saldo restante total.");
-                            return;
-                        }
-
-                        let remainingToDistribute = payAmount;
-                        purchase.installments.forEach(inst => {
-                            if (inst.status === 'pendiente' && remainingToDistribute > 0) {
-                                const instRem = inst.amount - inst.paidAmount;
-                                if (remainingToDistribute >= instRem) {
-                                    inst.paidAmount = inst.amount;
-                                    inst.status = 'pagado';
-                                    remainingToDistribute -= instRem;
-                                } else {
-                                    inst.paidAmount += remainingToDistribute;
-                                    if (inst.paidAmount >= inst.amount) inst.status = 'pagado';
-                                    remainingToDistribute = 0;
-                                }
-                            }
+                        // Registrar transacción de egreso según el método de pago seleccionado
+                        await db.transacciones.add({
+                            fecha: new Date(`${payDate}T12:00:00`).getTime(),
+                            tipo: 'egreso',
+                            monto: payMethod === 'VES' ? (payAmount * bcvRate) : payAmount,
+                            moneda: payMethod,
+                            descripcion: `Abono Cuota N°${inst.installmentNumber} de: ${purchase.item}`,
+                            referencia: payReferencia,
+                            userId: currentUser.id
                         });
-
-                        const allPaid = purchase.installments.every(i => i.status === 'pagado');
-                        purchase.status = allPaid ? 'pagado' : 'pendiente';
-                        await db.compras.put(purchase);
-
-                        if (tipoDestino === 'caja') {
-                            await db.transacciones.add({
-                                fecha: new Date(`${payDate}T12:00:00`).getTime(),
-                                tipo: 'egreso',
-                                monto: payMethod === 'VES' ? (payAmount * bcvRate) : payAmount,
-                                moneda: payMethod,
-                                descripcion: `Pago total/restante financiamiento: ${purchase.item}`,
-                                referencia: payReferencia,
-                                userId: currentUser.id
-                            });
-                        }
-                        syncCurrentUserDataToCloud().catch(() => {});
+                        syncCurrentUserDataToSupabase().catch(() => {});
                     }
                 } else if (targetType === 'deuda') {
                     const debt = await db.deudas.get(targetId);
@@ -1396,52 +1369,39 @@
                         }
                         await db.deudas.put(debt);
 
-                        if (tipoDestino === 'caja') {
-                            const txType = debt.tipo === 'cobrar' ? 'ingreso' : 'egreso';
-                            const descPrefix = debt.tipo === 'cobrar' ? 'Cobro recibido de deuda' : 'Pago realizado de deuda';
+                        // Determinar tipo de flujo de caja según el tipo de la cuenta
+                        const txType = debt.tipo === 'cobrar' ? 'ingreso' : 'egreso';
+                        const descPrefix = debt.tipo === 'cobrar' ? 'Cobro recibido' : 'Pago realizado';
 
-                            await db.transacciones.add({
-                                fecha: new Date(`${payDate}T12:00:00`).getTime(),
-                                tipo: txType,
-                                monto: payMethod === 'VES' ? (payAmount * bcvRate) : payAmount,
-                                moneda: payMethod,
-                                descripcion: `${descPrefix}: ${debt.concepto} (${debt.persona})`,
-                                referencia: payReferencia,
-                                userId: currentUser.id
-                            });
-                        }
-                        syncCurrentUserDataToCloud().catch(() => {});
+                        await db.transacciones.add({
+                            fecha: new Date(`${payDate}T12:00:00`).getTime(),
+                            tipo: txType,
+                            monto: payMethod === 'VES' ? (payAmount * bcvRate) : payAmount,
+                            moneda: payMethod,
+                            descripcion: `${descPrefix}: ${debt.concepto} (${debt.persona})`,
+                            referencia: payReferencia,
+                            userId: currentUser.id
+                        });
+                        syncCurrentUserDataToSupabase().catch(() => {});
                     }
                 }
 
-                alert("¡Pago registrado exitosamente!");
                 closePaymentModal();
                 await updateBalancesAndDashboards();
             });
 
+            // Manejo del modal de edición
             window.openEditModal = function(type, targetId, installmentIdx) {
-                if (!currentUser || currentUser.role !== 'admin') {
-                    alert('Solo el Administrador puede editar los registros.');
-                    return;
-                }
-
                 document.getElementById('edit-type').value = type;
                 document.getElementById('edit-target-id').value = targetId;
                 document.getElementById('edit-installment-idx').value = installmentIdx || 0;
 
-                const amtContainer = document.getElementById('edit-field-amount-container');
-                const dateContainer = document.getElementById('edit-field-date-container');
-                const descContainer = document.getElementById('edit-field-desc-container');
-                const personContainer = document.getElementById('edit-field-person-container');
-                const monedaContainer = document.getElementById('edit-field-moneda-container');
-
-                personContainer.classList.add('hidden');
-                amtContainer.classList.remove('hidden');
-                dateContainer.classList.remove('hidden');
-                descContainer.classList.remove('hidden');
-                monedaContainer.classList.remove('hidden');
-
+                // Rellenar campos según tipo
                 if (type === 'transaction') {
+                    if (!currentUser || currentUser.role !== 'admin') {
+                        alert('Solo administradores pueden editar transacciones.');
+                        return;
+                    }
                     document.getElementById('edit-modal-title').innerText = 'Editar Transacción';
                     db.transacciones.get(targetId).then(t => {
                         if (!t) return;
@@ -1453,8 +1413,12 @@
                         document.getElementById('edit-modal').classList.remove('hidden');
                     });
                 } else if (type === 'installment') {
-                    document.getElementById('edit-modal-title').innerText = 'Editar Cuota de Financiamiento';
-                    db.compras.get(targetId).then(p => {
+                    document.getElementById('edit-modal-title').innerText = 'Editar Cuota';
+                        if (!currentUser || currentUser.role !== 'admin') {
+                            alert('Solo administradores pueden editar cuotas.');
+                            return;
+                        }
+                        db.compras.get(targetId).then(p => {
                         if (!p) return;
                         const idx = parseInt(installmentIdx, 10);
                         const inst = p.installments[idx];
@@ -1462,29 +1426,7 @@
                         document.getElementById('edit-description').value = p.item || '';
                         const d = new Date(inst.dueDate);
                         document.getElementById('edit-date').value = d.toISOString().split('T')[0];
-                        monedaContainer.classList.add('hidden');
-                        document.getElementById('edit-modal').classList.remove('hidden');
-                    });
-                } else if (type === 'debt') {
-                    document.getElementById('edit-modal-title').innerText = 'Editar Cuenta por Pagar/Cobrar';
-                    db.deudas.get(targetId).then(d => {
-                        if (!d) return;
-                        document.getElementById('edit-amount').value = d.montoPendiente;
-                        document.getElementById('edit-description').value = d.concepto || '';
-                        document.getElementById('edit-person').value = d.persona || '';
-                        personContainer.classList.remove('hidden');
-                        dateContainer.classList.add('hidden');
-                        monedaContainer.classList.add('hidden');
-                        document.getElementById('edit-modal').classList.remove('hidden');
-                    });
-                } else if (type === 'purchase') {
-                    document.getElementById('edit-modal-title').innerText = 'Editar Financiamiento (Cashea)';
-                    db.compras.get(targetId).then(p => {
-                        if (!p) return;
-                        document.getElementById('edit-amount').value = p.total;
-                        document.getElementById('edit-description').value = p.item || '';
-                        dateContainer.classList.add('hidden');
-                        monedaContainer.classList.add('hidden');
+                        document.getElementById('edit-moneda').value = 'USD';
                         document.getElementById('edit-modal').classList.remove('hidden');
                     });
                 }
@@ -1498,7 +1440,7 @@
             document.getElementById('edit-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 if (!currentUser || currentUser.role !== 'admin') {
-                    alert('No tienes permisos.');
+                    alert('No tienes permisos para realizar esta acción.');
                     closeEditModal();
                     return;
                 }
@@ -1507,54 +1449,48 @@
                 const instIdx = parseInt(document.getElementById('edit-installment-idx').value || 0);
                 const amount = parseFloat(document.getElementById('edit-amount').value) || 0;
                 const desc = document.getElementById('edit-description').value.trim();
-                const person = document.getElementById('edit-person').value.trim();
                 const moneda = document.getElementById('edit-moneda').value;
                 const dateVal = document.getElementById('edit-date').value || new Date().toISOString().split('T')[0];
                 const ts = new Date(`${dateVal}T12:00:00`).getTime();
 
-                if (type === 'transaction') {
-                    const tx = await db.transacciones.get(targetId);
-                    if (tx) {
-                        tx.monto = amount;
-                        tx.descripcion = desc;
-                        tx.moneda = moneda;
-                        tx.fecha = ts;
-                        await db.transacciones.put(tx);
-                    }
-                } else if (type === 'installment') {
-                    const p = await db.compras.get(targetId);
-                    if (p) {
-                        p.installments[instIdx].amount = amount;
-                        p.installments[instIdx].dueDate = ts;
-                        await db.compras.put(p);
-                    }
-                } else if (type === 'debt') {
-                    const d = await db.deudas.get(targetId);
-                    if (d) {
-                        d.montoPendiente = amount;
-                        d.concepto = desc;
-                        d.persona = person;
-                        await db.deudas.put(d);
-                    }
-                } else if (type === 'purchase') {
-                    const p = await db.compras.get(targetId);
-                    if (p) {
-                        p.total = amount;
-                        p.item = desc;
-                        await db.compras.put(p);
-                    }
+                // Validaciones simples
+                if (isNaN(amount) || amount <= 0) {
+                    alert('Introduce un monto válido mayor a 0.');
+                    return;
+                }
+                if (isNaN(ts)) {
+                    alert('Introduce una fecha válida.');
+                    return;
                 }
 
-                await syncCurrentUserDataToCloud().catch(() => {});
+                if (type === 'transaction') {
+                    const tx = await db.transacciones.get(targetId);
+                    if (!tx) return closeEditModal();
+                    tx.monto = amount;
+                    tx.descripcion = desc;
+                    tx.moneda = moneda;
+                    tx.fecha = ts;
+                    await db.transacciones.put(tx);
+                } else if (type === 'installment') {
+                    const p = await db.compras.get(targetId);
+                    if (!p) return closeEditModal();
+                    p.installments[instIdx].amount = amount;
+                    p.installments[instIdx].dueDate = ts;
+                    await db.compras.put(p);
+                }
+
+                await syncCurrentUserDataToSupabase().catch(() => {});
                 closeEditModal();
                 await updateBalancesAndDashboards();
             });
 
+            // Filtro de historial transaccional
             document.getElementById('filter-tx-type').addEventListener('change', async () => {
                 await renderTransacciones();
             });
         }
 
+        // --- 7. CONTROLADORES DE INTERFAZ DE BOTONES ---
         function setTxType(type) {
             currentTxType = type;
             const btnIngreso = document.getElementById('tx-type-ingreso');
@@ -1587,6 +1523,7 @@
         async function updateBalancesAndDashboards() {
             if (!currentUser) return;
 
+            // Obtener todas las transacciones vinculadas al usuario activo
             const txs = await db.transacciones.where('userId').equals(currentUser.id).toArray();
             
             let usdBalance = 0;
@@ -1601,17 +1538,16 @@
                 }
             });
 
-            document.getElementById('balance-usd').innerText = `$${formatNumber(usdBalance)}`;
-            document.getElementById('balance-usd-equiv').innerHTML = getEquivUsdHtml(usdBalance);
+            // Actualizar interfaz principal de balance
+            document.getElementById('balance-usd').innerText = `$${usdBalance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('balance-ves').innerText = `Bs ${vesBalance.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
-            document.getElementById('balance-ves').innerText = `Bs ${formatNumber(vesBalance)}`;
-            document.getElementById('balance-ves-equiv').innerHTML = getEquivVesHtml(vesBalance);
-
+            // Calcular cobros pendientes de Cuentas por Cobrar
             const receivables = await db.deudas.where({ userId: currentUser.id, tipo: 'cobrar', status: 'pendiente' }).toArray();
             const totalReceivables = receivables.reduce((sum, item) => sum + item.montoPendiente, 0);
-            document.getElementById('pending-receivables').innerText = `$${formatNumber(totalReceivables)}`;
-            document.getElementById('pending-receivables-equiv').innerHTML = getEquivUsdHtml(totalReceivables);
+            document.getElementById('pending-receivables').innerText = `$${totalReceivables.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
+            // Calcular deudas pendientes (Cashea + Cuentas por pagar)
             const payables = await db.deudas.where({ userId: currentUser.id, tipo: 'pagar', status: 'pendiente' }).toArray();
             const totalPayables = payables.reduce((sum, item) => sum + item.montoPendiente, 0);
 
@@ -1626,9 +1562,9 @@
             });
 
             const totalDebtsGlobal = totalPayables + totalCasheaPending;
-            document.getElementById('pending-payables').innerText = `$${formatNumber(totalDebtsGlobal)}`;
-            document.getElementById('pending-payables-equiv').innerHTML = getEquivUsdHtml(totalDebtsGlobal);
+            document.getElementById('pending-payables').innerText = `$${totalDebtsGlobal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
+            // Renderizar vistas asociadas
             await renderTransacciones();
             await renderCompras();
             await renderDeudas();
@@ -1695,7 +1631,7 @@
                         </div>
                         <div class="flex-grow">
                             <h4 class="font-bold text-amber-400 text-base mb-1">¡Recordatorio de Pago de Cuotas!</h4>
-                            <p class="text-xs text-slate-400 mb-3">Las siguientes cuotas están a 1 día de vencerse:</p>
+                            <p class="text-xs text-slate-400 mb-3">Las siguientes cuotas están a 1 día de vencerse. Por favor, procese sus pagos para evitar cargos o retrasos:</p>
                             <div class="space-y-1">
                                 ${listHtml}
                             </div>
@@ -1733,23 +1669,18 @@
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-800/40 transition";
                 const canEdit = currentUser && currentUser.role === 'admin';
-                
-                const equivText = t.moneda === 'USD' 
-                    ? `<span class="block text-[11px] text-slate-400 font-normal">Bs ${formatNumber(t.monto * bcvRate)}</span>`
-                    : `<span class="block text-[11px] text-slate-400 font-normal">$${formatNumber(t.monto / (bcvRate || 1))}</span>`;
-
                 const actionButtons = canEdit ? `
                             <div class="flex items-center justify-center gap-2">
-                                <button type="button" onclick="openEditModal('transaction', ${t.id})" class="text-slate-500 hover:text-cyan-300 p-1.5 rounded-lg hover:bg-slate-700/40 transition" title="Editar registro">
+                                <button onclick="openEditModal('transaction', ${t.id})" class="text-slate-500 hover:text-cyan-300 p-1.5 rounded-lg hover:bg-slate-700/40 transition" title="Editar registro">
                                     <i data-lucide="edit-2" class="w-4 h-4"></i>
                                 </button>
-                                <button type="button" onclick="deleteTransaction(${t.id})" class="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 transition" title="Borrar registro">
+                                <button onclick="deleteTransaction(${t.id})" class="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 transition" title="Borrar registro">
                                     <i data-lucide="trash" class="w-4 h-4"></i>
                                 </button>
                             </div>
                 ` : `
                             <div class="flex items-center justify-center gap-2">
-                                <button type="button" onclick="deleteTransaction(${t.id})" class="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 transition" title="Borrar registro">
+                                <button onclick="deleteTransaction(${t.id})" class="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 transition" title="Borrar registro">
                                     <i data-lucide="trash" class="w-4 h-4"></i>
                                 </button>
                             </div>
@@ -1767,8 +1698,7 @@
                         <span class="px-2.5 py-1 text-xs rounded-full font-bold uppercase tracking-wider ${labelBg}">${t.tipo}</span>
                     </td>
                     <td class="py-4.5 text-right font-bold ${fontColor}">
-                        ${t.tipo === 'ingreso' ? '+' : '-'}${formatSymbol}${formatNumber(t.monto)}
-                        ${equivText}
+                        ${t.tipo === 'ingreso' ? '+' : '-'}${formatSymbol}${t.monto.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                     </td>
                     <td class="py-4.5 text-center">
                         ${actionButtons}
@@ -1779,120 +1709,73 @@
         }
 
         async function renderCompras() {
-            const listActivos = document.getElementById('purchases-list-activos');
-            const listPagados = document.getElementById('purchases-list-pagados');
-            listActivos.innerHTML = '';
-            listPagados.innerHTML = '';
+            const list = document.getElementById('purchases-list');
+            list.innerHTML = '';
 
             const purchases = await db.compras.where('userId').equals(currentUser.id).reverse().toArray();
 
-            const activePurchases = purchases.filter(p => p.status === 'pendiente');
-            const paidPurchases = purchases.filter(p => p.status === 'pagado');
-
-            if (activePurchases.length === 0) {
-                listActivos.innerHTML = `<div class="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center text-slate-500">Ningún financiamiento activo registrado.</div>`;
-            } else {
-                activePurchases.forEach(p => renderPurchaseCard(p, listActivos));
+            if (purchases.length === 0) {
+                list.innerHTML = `<div class="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center text-slate-500">Ningún plan de financiamiento registrado.</div>`;
+                return;
             }
 
-            if (paidPurchases.length === 0) {
-                listPagados.innerHTML = `<div class="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center text-slate-500">No hay productos ni pagos completados aún.</div>`;
-            } else {
-                paidPurchases.forEach(p => renderPurchaseCard(p, listPagados));
-            }
-        }
+            purchases.forEach(p => {
+                const totalPaid = p.installments.reduce((sum, inst) => sum + inst.paidAmount, 0);
+                const remainingGlobal = (p.total - p.downpayment) - totalPaid;
+                const progressPct = Math.round((totalPaid / (p.total - p.downpayment)) * 100) || 0;
 
-        function renderPurchaseCard(p, container) {
-            const totalPaid = p.installments.reduce((sum, inst) => sum + inst.paidAmount, 0);
-            const remainingGlobal = (p.total - p.downpayment) - totalPaid;
-            const progressPct = Math.round((totalPaid / (p.total - p.downpayment)) * 100) || 0;
-            const isAdmin = currentUser && currentUser.role === 'admin';
-            const isFullyPaid = p.status === 'pagado';
+                const card = document.createElement('div');
+                card.className = "bg-slate-900 border border-slate-700/60 rounded-xl p-5 space-y-4 shadow-sm";
+                
+                let installmentRows = '';
+                p.installments.forEach((inst, idx) => {
+                    const dueStr = new Date(inst.dueDate).toLocaleDateString('es-VE', {day: '2-digit', month: '2-digit'});
+                    const isPaid = inst.status === 'pagado';
+                    const remainingInst = inst.amount - inst.paidAmount;
 
-            const card = document.createElement('div');
-            card.className = `bg-slate-900 border ${isFullyPaid ? 'border-emerald-500/40' : 'border-slate-700/60'} rounded-xl p-5 space-y-4 shadow-sm transition`;
-            
-            let installmentRows = '';
-            p.installments.forEach((inst, idx) => {
-                const dueStr = new Date(inst.dueDate).toLocaleDateString('es-VE', {day: '2-digit', month: '2-digit'});
-                const isPaid = inst.status === 'pagado';
-                const remainingInst = inst.amount - inst.paidAmount;
+                    const canEditInst = currentUser && currentUser.role === 'admin';
 
-                installmentRows += `
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg ${isPaid ? 'bg-slate-800/20 border border-emerald-950/40 text-slate-500' : 'bg-slate-800/60 border border-slate-700/40'} text-xs">
-                        <div class="space-y-1">
-                            <span class="font-bold text-slate-300">Cuota ${inst.installmentNumber} / ${p.totalInstallments}</span>
-                            <div class="flex items-center gap-2">
-                                <span class="text-slate-500">Vence: ${dueStr}</span>
-                                <span class="px-1.5 py-0.5 rounded ${isPaid ? 'bg-emerald-950 text-emerald-400' : 'bg-amber-950 text-amber-400'} font-semibold uppercase tracking-wider text-[10px]">
-                                    ${isPaid ? 'Pagado' : 'Pendiente'}
-                                </span>
+                    installmentRows += `
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg ${isPaid ? 'bg-slate-800/20 border border-emerald-950/40 text-slate-500' : 'bg-slate-800/60 border border-slate-700/40'} text-xs">
+                            <div class="space-y-1">
+                                <span class="font-bold text-slate-300">Cuota ${inst.installmentNumber} / ${p.totalInstallments}</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-slate-500">Vence: ${dueStr}</span>
+                                    <span class="px-1.5 py-0.5 rounded ${isPaid ? 'bg-emerald-950 text-emerald-400' : 'bg-amber-950 text-amber-400'} font-semibold uppercase tracking-wider text-[10px]">
+                                        ${isPaid ? 'Pagado' : 'Pendiente'}
+                                    </span>
+                                </div>
                             </div>
-                        </div>
-                        <div class="flex items-center gap-4 mt-2 sm:mt-0 justify-between sm:justify-end">
-                            <div class="text-right">
-                                <p class="font-bold text-slate-200">$${formatNumber(inst.amount)}</p>
-                                ${getEquivUsdHtml(inst.amount)}
-                                ${!isPaid && inst.paidAmount > 0 ? `<p class="text-[10px] text-emerald-400 font-semibold">Abonado: $${formatNumber(inst.paidAmount)}</p>` : ''}
-                            </div>
-                            <div class="flex items-center gap-1.5">
+                            <div class="flex items-center gap-4 mt-2 sm:mt-0 justify-between sm:justify-end">
+                                <div class="text-right">
+                                    <p class="font-bold text-slate-200">$${inst.amount.toFixed(2)}</p>
+                                    ${!isPaid && inst.paidAmount > 0 ? `<p class="text-[10px] text-emerald-400 font-semibold">Abonado: $${inst.paidAmount.toFixed(2)}</p>` : ''}
+                                </div>
                                 ${!isPaid ? `
-                                    <button type="button" onclick="openPaymentModal('cashea', ${p.id}, ${idx}, ${remainingInst}, '${p.item} - Cuota ${inst.installmentNumber}')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg transition text-[11px]">
+                                    <button onclick="openPaymentModal('cashea', ${p.id}, ${idx}, ${remainingInst}, '${p.item} - Cuota ${inst.installmentNumber}')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg transition text-[11px]">
                                         Abonar
                                     </button>
+                                    ${canEditInst ? `<button onclick="openEditModal('installment', ${p.id}, ${idx})" class="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-lg transition text-[11px]">Editar</button>` : ''}
                                 ` : `
                                     <span class="text-emerald-400 p-1 bg-emerald-500/10 rounded-full"><i data-lucide="check" class="w-4 h-4"></i></span>
                                 `}
-                                ${isAdmin ? `
-                                    <button type="button" onclick="openEditModal('installment', ${p.id}, ${idx})" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded-lg transition" title="Editar Cuota">
-                                        <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
-                                    </button>
-                                ` : ''}
                             </div>
                         </div>
-                    </div>
-                `;
-            });
+                    `;
+                });
 
-            const editPurchaseBtn = isAdmin ? `
-                <button type="button" onclick="openEditModal('purchase', ${p.id}); event.stopPropagation();" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded-lg transition" title="Editar Financiamiento">
-                    <i data-lucide="edit-2" class="w-4 h-4"></i>
-                </button>
-            ` : '';
-
-            const payTotalBtn = !isFullyPaid ? `
-                <button type="button" onclick="openPaymentModal('cashea_total', ${p.id}, -1, ${remainingGlobal}, '${p.item} - Deuda Total Restante'); event.stopPropagation();" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition text-[11px] shadow-sm">
-                    Pagar Totalidad
-                </button>
-            ` : `<span class="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded-lg border border-emerald-500/20">Pago Listo / Completo</span>`;
-
-            card.innerHTML = `
-                <div onclick="toggleCardAccordion('purchase', ${p.id})" class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 cursor-pointer select-none">
-                    <div class="flex items-center gap-3">
-                        <div id="purchase-icon-${p.id}" class="purchase-accordion-icon text-slate-400 transition-transform duration-200">
-                            <i data-lucide="chevron-down" class="w-5 h-5"></i>
-                        </div>
+                card.innerHTML = `
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-800 pb-3">
                         <div>
-                            <div class="flex items-center gap-2">
-                                <h5 class="font-bold text-slate-100">${p.item}</h5>
-                                ${editPurchaseBtn}
-                            </div>
-                            <p class="text-xs text-slate-400">Total: $${formatNumber(p.total)} | Inicial: $${formatNumber(p.downpayment)}</p>
+                            <h5 class="font-bold text-slate-100 flex items-center gap-2">${p.item}</h5>
+                            <p class="text-xs text-slate-400">Total: $${p.total.toFixed(2)} | Inicial: $${p.downpayment.toFixed(2)}</p>
                         </div>
-                    </div>
-                    <div class="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end" onclick="event.stopPropagation()">
                         <div class="text-right">
                             <p class="text-xs text-slate-400">Deuda Restante</p>
-                            <span class="font-bold text-amber-400">$${formatNumber(remainingGlobal)}</span>
-                            ${getEquivUsdHtml(remainingGlobal)}
-                        </div>
-                        <div>
-                            ${payTotalBtn}
+                            <span class="font-bold text-amber-400">$${remainingGlobal.toFixed(2)}</span>
                         </div>
                     </div>
-                </div>
-
-                <div id="purchase-content-${p.id}" class="purchase-accordion-content hidden space-y-4 pt-4 border-t border-slate-800">
+                    
                     <div>
                         <div class="flex justify-between text-xs mb-1">
                             <span class="text-slate-400">Progreso de Pago</span>
@@ -1907,9 +1790,9 @@
                         <p class="text-xs font-semibold tracking-wider uppercase text-slate-400">Cuotas Quincenales</p>
                         ${installmentRows}
                     </div>
-                </div>
-            `;
-            container.appendChild(card);
+                `;
+                list.appendChild(card);
+            });
         }
 
         async function renderDeudas() {
@@ -1928,55 +1811,32 @@
                 const isPorCobrar = d.tipo === 'cobrar';
                 const typeLabel = isPorCobrar ? 'POR COBRAR (Cliente)' : 'POR PAGAR (Proveedor)';
                 const badgeClass = isPorCobrar ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20';
-                const isAdmin = currentUser && currentUser.role === 'admin';
 
                 const card = document.createElement('div');
-                card.className = `bg-slate-900 border ${isPaid ? 'border-slate-800 opacity-60' : 'border-slate-700'} rounded-xl p-5 shadow-sm transition`;
-
-                const editDebtBtn = isAdmin ? `
-                    <button type="button" onclick="openEditModal('debt', ${d.id}); event.stopPropagation();" class="p-2 hover:bg-slate-800 text-cyan-400 rounded-lg transition" title="Editar Cuenta">
-                        <i data-lucide="edit-2" class="w-4 h-4"></i>
-                    </button>
-                ` : '';
+                card.className = `bg-slate-900 border ${isPaid ? 'border-slate-800 opacity-60' : 'border-slate-700'} rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm`;
 
                 card.innerHTML = `
-                    <div onclick="toggleCardAccordion('debt', ${d.id})" class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer select-none">
-                        <div class="flex items-center gap-3">
-                            <div id="debt-icon-${d.id}" class="debt-accordion-icon text-slate-400 transition-transform duration-200">
-                                <i data-lucide="chevron-down" class="w-5 h-5"></i>
-                            </div>
-                            <div class="space-y-1">
-                                <div class="flex items-center gap-2">
-                                    <span class="px-2 py-0.5 text-[10px] rounded font-bold uppercase tracking-wider ${badgeClass}">
-                                        ${typeLabel}
-                                    </span>
-                                    ${editDebtBtn}
-                                </div>
-                                <h5 class="font-bold text-slate-100 text-base pt-1">${d.concepto}</h5>
-                                <p class="text-xs text-slate-400">Persona involucrada: <span class="text-slate-200 font-semibold">${d.persona}</span></p>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-4 justify-between sm:justify-end border-t border-slate-800 sm:border-0 pt-3 sm:pt-0" onclick="event.stopPropagation()">
-                            <div class="text-left sm:text-right">
-                                <p class="text-xs text-slate-500">Saldo Pendiente</p>
-                                <p class="font-bold text-lg text-amber-400">$${formatNumber(d.montoPendiente)}</p>
-                                ${getEquivUsdHtml(d.montoPendiente)}
-                                ${isPaid ? `<span class="text-xs text-emerald-400 font-bold uppercase tracking-wider">Totalmente solventado</span>` : ''}
-                            </div>
-                        </div>
+                    <div class="space-y-1">
+                        <span class="px-2 py-0.5 text-[10px] rounded font-bold uppercase tracking-wider ${badgeClass}">
+                            ${typeLabel}
+                        </span>
+                        <h5 class="font-bold text-slate-100 text-base pt-1">${d.concepto}</h5>
+                        <p class="text-xs text-slate-400">Persona involucrada: <span class="text-slate-200 font-semibold">${d.persona}</span></p>
+                        <p class="text-xs text-slate-500">Monto total registrado: $${d.montoTotal.toFixed(2)}</p>
                     </div>
-
-                    <div id="debt-content-${d.id}" class="debt-accordion-content hidden mt-4 pt-4 border-t border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                        <div>
-                            <p class="text-xs text-slate-400">Monto total registrado: <span class="text-slate-200 font-semibold">$${formatNumber(d.montoTotal)}</span></p>
+                    <div class="flex items-center gap-4 justify-between sm:justify-end border-t border-slate-800 sm:border-0 pt-3 sm:pt-0">
+                        <div class="text-left sm:text-right">
+                            <p class="text-xs text-slate-500">Saldo Pendiente</p>
+                            <p class="font-bold text-lg text-amber-400">$${d.montoPendiente.toFixed(2)}</p>
+                            ${isPaid ? `<span class="text-xs text-emerald-400 font-bold uppercase tracking-wider">Totalmente solventado</span>` : ''}
                         </div>
                         <div class="flex items-center gap-2">
                             ${!isPaid ? `
-                                <button type="button" onclick="openPaymentModal('deuda', ${d.id}, 0, ${d.montoPendiente}, '${d.concepto} (${d.persona})')" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition">
+                                <button onclick="openPaymentModal('deuda', ${d.id}, 0, ${d.montoPendiente}, '${d.concepto} (${d.persona})')" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition">
                                     Abonar
                                 </button>
                             ` : ''}
-                            <button type="button" onclick="deleteDebt(${d.id})" class="p-2 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 rounded-lg transition" title="Borrar Cuenta">
+                            <button onclick="deleteDebt(${d.id})" class="p-2 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 rounded-lg transition" title="Eliminar registro">
                                 <i data-lucide="trash" class="w-4 h-4"></i>
                             </button>
                         </div>
@@ -1986,118 +1846,136 @@
             });
         }
 
-        // --- FUNCIONES ADICIONALES FALTANTES ---
-        async function deleteTransaction(id) {
-            if (!currentUser) return;
-            if (confirm('¿Estás seguro de eliminar esta transacción?')) {
-                await db.transacciones.delete(id);
-                if (supabase) {
-                    try {
-                        await supabase.from('transacciones').delete().eq('id', id);
-                    } catch(e) {
-                        console.warn('No se pudo eliminar en Supabase (solo local):', e);
-                    }
-                }
-                await syncCurrentUserDataToCloud().catch(() => {});
-                await updateBalancesAndDashboards();
-            }
-        }
-
-        async function deleteDebt(id) {
-            if (!currentUser) return;
-            if (confirm('¿Estás seguro de eliminar esta cuenta?')) {
-                await db.deudas.delete(id);
-                await syncCurrentUserDataToCloud().catch(() => {});
-                await updateBalancesAndDashboards();
-            }
-        }
-
-        async function exportData() {
-            if (!currentUser) return;
-            const txs = await db.transacciones.where('userId').equals(currentUser.id).toArray();
-            const compras = await db.compras.where('userId').equals(currentUser.id).toArray();
-            const deudas = await db.deudas.where('userId').equals(currentUser.id).toArray();
-            const dataExport = {
-                usuario: currentUser.username,
-                fechaExportacion: new Date().toISOString(),
-                transacciones: txs,
-                compras: compras,
-                deudas: deudas
-            };
-            const blob = new Blob([JSON.stringify(dataExport, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `InterFinanzas_Backup_${currentUser.username}_${new Date().toISOString().split('T')[0]}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-
         async function renderAdminPanel() {
-            if (!currentUser || currentUser.role !== 'admin') return;
-            const users = await db.usuarios.toArray();
+            if (currentUser.role !== 'admin') return;
+
             const tbody = document.getElementById('users-table-body');
-            if (!tbody) return;
             tbody.innerHTML = '';
+
+            const users = await db.usuarios.toArray();
             users.forEach(u => {
                 const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-800/40 transition";
+                tr.className = "border-b border-slate-800 hover:bg-slate-800/40 transition";
                 tr.innerHTML = `
-                    <td class="py-3 font-medium text-slate-200">${u.username} <span class="text-xs text-slate-400">(${u.nombre || 'Sin nombre'})</span></td>
-                    <td class="py-3"><span class="px-2 py-0.5 text-xs rounded-full font-bold uppercase ${u.role === 'admin' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-slate-700 text-slate-300'}">${u.role}</span></td>
-                    <td class="py-3 text-right">
-                        ${u.username !== currentUser.username ? `<button type="button" onclick="deleteUser(${u.id})" class="text-rose-400 hover:text-rose-300 text-xs font-semibold px-2 py-1 bg-rose-500/10 rounded-lg transition">Eliminar</button>` : '<span class="text-xs text-slate-500">Actual</span>'}
+                    <td class="py-4.5 font-medium text-slate-200">${u.username}</td>
+                    <td class="py-4.5">
+                        <span class="px-2.5 py-1 text-xs rounded-full font-bold uppercase tracking-wider ${u.role === 'admin' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-slate-700 text-slate-300'}">${u.role}</span>
+                    </td>
+                    <td class="py-4.5 text-right">
+                        ${u.username !== 'Anghel' ? `
+                            <button onclick="deleteUser(${u.id})" class="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 transition" title="Borrar usuario">
+                                <i data-lucide="user-x" class="w-4 h-4"></i>
+                            </button>
+                        ` : '<span class="text-xs text-slate-500 italic pr-2">Protegido</span>'}
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
-        async function deleteUser(userId) {
-            if (confirm('¿Estás seguro de eliminar este usuario y todos sus datos locales?')) {
-                const userToDelete = await db.usuarios.get(userId);
-                if (userToDelete) {
-                    await db.transacciones.where('userId').equals(userId).delete();
-                    await db.compras.where('userId').equals(userId).delete();
-                    await db.deudas.where('userId').equals(userId).delete();
-                    await db.usuarios.delete(userId);
-                    await updateBalancesAndDashboards();
+        // --- 9. ELIMINACIÓN DE REGISTROS ---
+        async function deleteTransaction(id) {
+            if (confirm("¿Estás seguro de que deseas eliminar este registro del historial? Esta acción alterará el cálculo del flujo de caja disponible.")) {
+                await db.transacciones.delete(id);
+                await syncCurrentUserDataToSupabase();
+                await updateBalancesAndDashboards();
+            }
+        }
+
+        async function deleteDebt(id) {
+            if (confirm("¿Seguro que deseas eliminar esta cuenta del sistema?")) {
+                await db.deudas.delete(id);
+                await syncCurrentUserDataToSupabase();
+                await updateBalancesAndDashboards();
+            }
+        }
+
+        async function deleteUser(id) {
+            if (confirm("¿Estás seguro de que deseas revocar los accesos de este usuario?")) {
+                const targetUser = await db.usuarios.get(id);
+                await db.usuarios.delete(id);
+                if (cloudSyncEnabled && supabaseClient && targetUser) {
+                    await supabaseClient
+                        .from('usuarios')
+                        .delete()
+                        .eq('username', targetUser.username)
+                        .catch(() => {});
                 }
+                await renderAdminPanel();
+                lucide.createIcons();
             }
         }
 
-        async function dangerWipeDatabase() {
-            if (confirm('ADVERTENCIA: ¿Estás seguro de restablecer toda la base de datos local? Esta acción no se puede deshacer.')) {
-                await db.delete();
-                localStorage.removeItem('activeUserSession');
-                window.location.reload();
-            }
-        }
-
-        window.openPaymentModal = function(targetType, targetId, installmentIdx, maxAmount, conceptText) {
-            document.getElementById('modal-target-type').value = targetType;
+        // --- 10. GESTIÓN DE MODAL DE PAGO ---
+        function openPaymentModal(type, targetId, installmentIdx, maxAmount, subtitleText) {
+            document.getElementById('modal-target-type').value = type;
             document.getElementById('modal-target-id').value = targetId;
-            document.getElementById('modal-installment-idx').value = installmentIdx !== undefined ? installmentIdx : 0;
-            document.getElementById('modal-max-amount').innerText = `$${formatNumber(maxAmount)}`;
-            document.getElementById('modal-pay-amount').value = maxAmount.toFixed(2);
-            document.getElementById('modal-pay-referencia').value = '';
-            document.getElementById('modal-pay-date').value = new Date().toISOString().split('T')[0];
-            document.getElementById('modal-concept-subtitle').innerText = conceptText || 'Abonar saldo a la deuda activa';
-            document.getElementById('modal-conversion-notice').classList.add('hidden');
-            document.getElementById('payment-modal').classList.remove('hidden');
-        };
+            document.getElementById('modal-installment-idx').value = installmentIdx;
+            document.getElementById('modal-max-amount').innerText = `$${maxAmount.toFixed(2)}`;
+            document.getElementById('modal-concept-subtitle').innerText = subtitleText;
+            
+            const payAmountInput = document.getElementById('modal-pay-amount');
+            payAmountInput.value = maxAmount.toFixed(2);
+            payAmountInput.max = maxAmount;
 
-        window.closePaymentModal = function() {
+            document.getElementById('payment-modal').classList.remove('hidden');
+            document.getElementById('modal-pay-method').value = 'USD';
+            document.getElementById('modal-pay-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('modal-conversion-notice').classList.add('hidden');
+        }
+
+        function closePaymentModal() {
             document.getElementById('payment-modal').classList.add('hidden');
             document.getElementById('modal-payment-form').reset();
+        }
+
+        // --- 11. RESPALDO Y RESTAURACIÓN DE SEGURIDAD ---
+        async function exportData() {
+            try {
+                const txs = await db.transacciones.where('userId').equals(currentUser.id).toArray();
+                const compras = await db.compras.where('userId').equals(currentUser.id).toArray();
+                const deudas = await db.deudas.where('userId').equals(currentUser.id).toArray();
+
+                const backup = {
+                    metadata: {
+                        exportDate: Date.now(),
+                        user: currentUser.username
+                    },
+                    transacciones: txs,
+                    compras,
+                    deudas
+                };
+
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup, null, 2));
+                const dlAnchor = document.createElement('a');
+                dlAnchor.setAttribute("href", dataStr);
+                dlAnchor.setAttribute("download", `InterFinanzas_Backup_${currentUser.username}.json`);
+                document.body.appendChild(dlAnchor);
+                dlAnchor.click();
+                dlAnchor.remove();
+            } catch (err) {
+                alert("Error al exportar los datos de seguridad: " + err.message);
+            }
+        }
+
+        // --- 12. HERRAMIENTAS ADMINISTRATIVAS ---
+        // Función de reseteo de BD (solo desde consola del navegador - F12)
+        // USO: escribir en la consola: resetDB()
+        window.resetDB = async function() {
+            if (confirm("ADVERTENCIA CRÍTICA: Se borrarán permanentemente todas las transacciones, deudas, usuarios de esta instalación, restableciendo el aplicativo al estado de fábrica. ¿Deseas continuar?")) {
+                const p = prompt("Por favor escribe la palabra 'BORRAR' para confirmar la acción:");
+                if (p === 'BORRAR') {
+                    await db.delete();
+                    localStorage.clear();
+                    alert("Base de datos local IndexedDB eliminada con éxito. Recargando la aplicación...");
+                    window.location.reload();
+                }
+            }
         };
 
-        window.fillModalMaxAmount = function() {
-            const maxText = document.getElementById('modal-max-amount').innerText.replace('$', '').replace(',', '');
-            document.getElementById('modal-pay-amount').value = parseFloat(maxText) || 0;
-            const event = new Event('input', { bubbles: true });
-            document.getElementById('modal-pay-amount').dispatchEvent(event);
-        };
+        async function dangerWipeDatabase() {
+            await window.resetDB();
+        }
     </script>
 </body>
 </html>
