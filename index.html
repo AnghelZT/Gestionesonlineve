@@ -54,6 +54,11 @@
                         <span id="binance-rate-display" class="text-xs font-semibold text-amber-400">Cargando...</span>
                     </div>
                 </div>
+                <!-- Indicador de sincronización -->
+                <div id="sync-indicator" class="hidden sm:flex items-center space-x-1 border-r border-slate-700 pr-3">
+                    <span class="sync-dot w-2 h-2 rounded-full bg-slate-500 inline-block mr-1"></span>
+                    <span class="sync-text text-[10px] text-slate-400">Inactivo</span>
+                </div>
                 <div id="user-profile-nav" class="hidden flex items-center space-x-3 border-l border-slate-700 pl-4">
                     <div class="text-right">
                         <p id="nav-username" class="text-sm font-medium text-slate-200">Usuario</p>
@@ -145,23 +150,28 @@
             <div id="cuotas-notifications-container" class="hidden"></div>
             
             <!-- Resumen de Saldos (Cards) -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div class="bg-gradient-to-br from-indigo-950 to-slate-800 border border-indigo-500/20 rounded-2xl p-5 shadow-md">
-                    <div class="flex justify-between items-start">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Card unificado de Caja Disponible -->
+                <div class="bg-gradient-to-br from-indigo-950 to-slate-800 border border-indigo-500/20 rounded-2xl p-5 shadow-md md:col-span-1">
+                    <div class="flex justify-between items-start mb-3">
                         <div>
-                            <p class="text-xs font-semibold uppercase tracking-wider text-indigo-300">Caja Disponible ($)</p>
-                            <h3 id="balance-usd" class="text-2xl font-bold mt-2 text-white">$0.00</h3>
+                            <p class="text-xs font-semibold uppercase tracking-wider text-indigo-300">Caja Disponible</p>
                         </div>
-                        <span class="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg"><i data-lucide="banknote"></i></span>
+                        <span class="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg"><i data-lucide="wallet"></i></span>
                     </div>
-                </div>
-                <div class="bg-gradient-to-br from-emerald-950 to-slate-800 border border-emerald-500/20 rounded-2xl p-5 shadow-md">
-                    <div class="flex justify-between items-start">
+                    <div class="flex items-center justify-between gap-4">
                         <div>
-                            <p class="text-xs font-semibold uppercase tracking-wider text-emerald-300">Caja Disponible (BS)</p>
-                            <h3 id="balance-ves" class="text-2xl font-bold mt-2 text-white">Bs 0.00</h3>
+                            <p class="text-[10px] text-slate-400">USD</p>
+                            <h3 id="balance-usd" class="text-xl font-bold text-white">$0.00</h3>
                         </div>
-                        <span class="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg"><i data-lucide="coins"></i></span>
+                        <div class="text-right">
+                            <p class="text-[10px] text-slate-400">VES</p>
+                            <h3 id="balance-ves" class="text-xl font-bold text-emerald-300">Bs 0.00</h3>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 mt-3 pt-3 border-t border-indigo-500/10">
+                        <button onclick="openCashModal('ingreso')" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition">+ Agregar</button>
+                        <button onclick="openCashModal('egreso')" class="flex-1 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl transition">- Retirar</button>
                     </div>
                 </div>
                 <div class="bg-gradient-to-br from-amber-950 to-slate-800 border border-amber-500/20 rounded-2xl p-5 shadow-md">
@@ -216,6 +226,7 @@
                 <button onclick="switchTab('transacciones')" class="tab-btn px-5 py-3 font-semibold text-sm border-b-2 transition whitespace-nowrap" id="tab-transacciones">Transacciones</button>
                 <button onclick="switchTab('compras')" class="tab-btn px-5 py-3 font-semibold text-sm border-b-2 transition whitespace-nowrap" id="tab-compras">Financiamientos (Cashea)</button>
                 <button onclick="switchTab('deudas')" class="tab-btn px-5 py-3 font-semibold text-sm border-b-2 transition whitespace-nowrap" id="tab-deudas">Cuentas por Pagar/Cobrar</button>
+                <button onclick="switchTab('creditos')" class="tab-btn px-5 py-3 font-semibold text-sm border-b-2 transition whitespace-nowrap" id="tab-creditos">Créditos</button>
                 <button onclick="switchTab('admin')" class="tab-btn px-5 py-3 font-semibold text-sm border-b-2 transition whitespace-nowrap hidden" id="tab-admin">Panel de Administración</button>
             </div>
 
@@ -323,6 +334,7 @@
                             <div>
                                 <label class="block text-xs font-semibold text-slate-400 mb-1.5">N° de Cuotas</label>
                                 <select id="pur-installments" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500">
+                                    <option value="1">1 Cuota (Línea Cotidiana)</option>
                                     <option value="3">3 Cuotas</option>
                                     <option value="4">4 Cuotas</option>
                                     <option value="6">6 Cuotas</option>
@@ -377,6 +389,68 @@
                     <div class="lg:col-span-2 bg-slate-800 border border-slate-700 rounded-2xl p-6">
                         <h4 class="font-bold text-lg mb-6 text-slate-200">Cuentas Pendientes de Cobro y Pago</h4>
                         <div id="debts-list" class="space-y-4">
+                            <!-- Dinámico -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN: CRÉDITOS -->
+            <div id="panel-creditos" class="tab-panel hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Formulario de Nuevo Crédito -->
+                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 h-fit">
+                        <h4 class="font-bold text-lg mb-4 text-cyan-400 flex items-center gap-2">
+                            <i data-lucide="landmark"></i> Nuevo Crédito
+                        </h4>
+                        <form id="credito-form" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Tipo de Crédito</label>
+                                <select id="cred-tipo" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-cyan-500">
+                                    <option value="personal">Personal</option>
+                                    <option value="hipotecario">Hipotecario</option>
+                                    <option value="vehiculo">Vehículo</option>
+                                    <option value="comercial">Comercial</option>
+                                    <option value="estudiantil">Estudiantil</option>
+                                    <option value="otro">Otro</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Frecuencia de Pago</label>
+                                <select id="cred-frecuencia" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-cyan-500">
+                                    <option value="mensual">Mensual</option>
+                                    <option value="quincenal">Quincenal</option>
+                                    <option value="semanal">Semanal</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Monto Total ($)</label>
+                                <input type="number" id="cred-monto" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-cyan-500" placeholder="0.00">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1.5">N° de Cuotas</label>
+                                <input type="number" id="cred-cuotas" min="1" max="120" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-cyan-500" placeholder="Ej. 12">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Tasa de Interés (%)</label>
+                                <input type="number" id="cred-tasa" step="0.01" value="0" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-cyan-500" placeholder="Ej. 5">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Fecha de Inicio</label>
+                                <input type="date" id="cred-fecha-inicio" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-cyan-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Descripción</label>
+                                <input type="text" id="cred-descripcion" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-cyan-500" placeholder="Ej. Préstamo bancario">
+                            </div>
+                            <button type="submit" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 rounded-xl transition">Registrar Crédito</button>
+                        </form>
+                    </div>
+
+                    <!-- Lista de Créditos -->
+                    <div class="lg:col-span-2 bg-slate-800 border border-slate-700 rounded-2xl p-6">
+                        <h4 class="font-bold text-lg mb-6 text-slate-200">Mis Créditos</h4>
+                        <div id="creditos-list" class="space-y-4">
                             <!-- Dinámico -->
                         </div>
                     </div>
@@ -476,6 +550,42 @@
         </div>
     </div>
 
+    <!-- MODAL DE CAJA (Agregar/Retirar fondos) -->
+    <div id="cash-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4">
+        <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onclick="closeCashModal()"></div>
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 relative z-10 shadow-2xl">
+            <h4 id="cash-modal-title" class="font-bold text-lg mb-2 text-indigo-400">Agregar a Caja</h4>
+            <p id="cash-modal-subtitle" class="text-xs text-slate-400 mb-6">Registrar movimiento en caja disponible</p>
+            
+            <form id="cash-form" class="space-y-4">
+                <input type="hidden" id="cash-type" value="ingreso">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">Moneda</label>
+                    <select id="cash-moneda" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500">
+                        <option value="USD">Dólares (USD / USDT)</option>
+                        <option value="VES">Bolívares (VES)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">Monto</label>
+                    <input type="number" id="cash-monto" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="0.00">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">Descripción</label>
+                    <input type="text" id="cash-descripcion" required class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="Ej. Depósito en efectivo">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">Referencia (Opcional)</label>
+                    <input type="text" id="cash-referencia" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="Ej. Ref 123456">
+                </div>
+                <div class="flex gap-2 justify-end pt-2">
+                    <button type="button" onclick="closeCashModal()" class="px-4 py-2.5 rounded-xl border border-slate-600 text-slate-300 font-semibold text-sm hover:bg-slate-700 transition">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm rounded-xl shadow-lg transition">Confirmar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- MODAL DE EDICIÓN (transacciones / cuotas) -->
     <div id="edit-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4">
         <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onclick="closeEditModal()"></div>
@@ -522,11 +632,12 @@
 
         // --- 1. CONFIGURACIÓN DE LA BASE DE DATOS LOCAL (DEXIE) ---
         const db = new Dexie("InterFinanzasDB");
-        db.version(1).stores({
+        db.version(2).stores({
             usuarios: '++id, &username, role',
             transacciones: '++id, fecha, tipo, monto, moneda, descripcion, userId',
             compras: '++id, item, total, downpayment, totalInstallments, installments, status, userId',
             deudas: '++id, tipo, persona, concepto, montoTotal, montoPendiente, status, userId',
+            creditos: '++id, tipo, frecuencia, totalCuotas, montoTotal, tasaInteres, fechaInicio, descripcion, installments, status, userId',
             configuracion: 'key, value'
         });
 
@@ -661,8 +772,77 @@
             return { id, username, password: passwordHash, role };
         }
 
+        let syncInterval = null;
+        let isSyncing = false;
+
+        function updateSyncIndicator(status) {
+            const indicator = document.getElementById('sync-indicator');
+            if (!indicator) return;
+            const dot = indicator.querySelector('.sync-dot');
+            const text = indicator.querySelector('.sync-text');
+            if (status === 'connected') {
+                dot.className = 'sync-dot w-2 h-2 rounded-full bg-emerald-400 inline-block mr-1';
+                text.textContent = 'Conectado';
+                text.className = 'sync-text text-[10px] text-emerald-400';
+            } else if (status === 'syncing') {
+                dot.className = 'sync-dot w-2 h-2 rounded-full bg-amber-400 animate-pulse inline-block mr-1';
+                text.textContent = 'Sincronizando...';
+                text.className = 'sync-text text-[10px] text-amber-400';
+            } else {
+                dot.className = 'sync-dot w-2 h-2 rounded-full bg-rose-400 inline-block mr-1';
+                text.textContent = 'Desconectado';
+                text.className = 'sync-text text-[10px] text-rose-400';
+            }
+        }
+
+        async function syncToSupabase(tableName, records, userId) {
+            if (!cloudSyncEnabled || !supabaseClient || records.length === 0) return;
+            
+            const tableMap = {
+                transacciones: { fields: ['id', 'fecha', 'tipo', 'monto', 'moneda', 'descripcion', 'referencia'] },
+                compras: { fields: ['id', 'item', 'total', 'downpayment', 'totalInstallments', 'initialPaymentDate', 'installments', 'status'] },
+                deudas: { fields: ['id', 'tipo', 'persona', 'concepto', 'montoTotal', 'montoPendiente', 'status'] },
+                creditos: { fields: ['id', 'tipo', 'frecuencia', 'totalCuotas', 'montoTotal', 'tasaInteres', 'fechaInicio', 'descripcion', 'installments', 'status'] },
+                configuracion: { fields: ['key', 'value'] }
+            };
+
+            const mapping = tableMap[tableName];
+            if (!mapping) return;
+
+            const supabaseRows = records.map(r => {
+                const row = { user_id: userId };
+                if (tableName === 'configuracion') {
+                    row.key = r.key;
+                    row.value = r.value;
+                } else {
+                    mapping.fields.forEach(f => {
+                        if (f === 'totalInstallments') row.total_installments = r[f];
+                        else if (f === 'initialPaymentDate') row.initial_payment_date = r[f];
+                        else if (f === 'montoTotal') row.monto_total = r.montoTotal;
+                        else if (f === 'montoPendiente') row.monto_pendiente = r.montoPendiente;
+                        else if (f === 'installments') row.installments = typeof r[f] === 'string' ? r[f] : JSON.stringify(r[f]);
+                        else row[f] = r[f];
+                    });
+                }
+                return row;
+            });
+
+            // Batch upsert - envía todos los registros de una sola vez
+            const { error } = await supabaseClient
+                .from(tableName)
+                .upsert(supabaseRows, { onConflict: 'id', ignoreDuplicates: false });
+
+            if (error) {
+                console.warn(`Error sincronizando ${tableName}:`, error);
+                return false;
+            }
+            return true;
+        }
+
         async function syncCurrentUserDataToSupabase() {
-            if (!cloudSyncEnabled || !currentUser || !supabaseClient) return;
+            if (!cloudSyncEnabled || !currentUser || !supabaseClient || isSyncing) return;
+            isSyncing = true;
+            updateSyncIndicator('syncing');
 
             try {
                 const txs = await db.transacciones.where('userId').equals(currentUser.id).toArray();
@@ -670,12 +850,12 @@
                 const deudas = await db.deudas.where('userId').equals(currentUser.id).toArray();
                 const configuracion = await db.configuracion.toArray();
 
-                // Sincronizar usuario
+                // Sincronizar usuario (individual porque es por username)
                 const { data: existingUser } = await supabaseClient
                     .from('usuarios')
                     .select('id')
                     .eq('username', currentUser.username)
-                    .single();
+                    .maybeSingle();
 
                 if (existingUser) {
                     await supabaseClient
@@ -688,188 +868,93 @@
                         .insert({ username: currentUser.username, password: currentUser.password, role: currentUser.role });
                 }
 
-                // Sincronizar transacciones
-                for (const tx of txs) {
-                    const { data: existingTx } = await supabaseClient
-                        .from('transacciones')
-                        .select('id')
-                        .eq('id', tx.id)
-                        .single();
+                // Sincronizar créditos
+                const creditos = await db.creditos.where('userId').equals(currentUser.id).toArray();
 
-                    if (!existingTx) {
-                        await supabaseClient.from('transacciones').insert({
-                            id: tx.id,
-                            fecha: tx.fecha,
-                            tipo: tx.tipo,
-                            monto: tx.monto,
-                            moneda: tx.moneda,
-                            descripcion: tx.descripcion,
-                            referencia: tx.referencia || '',
-                            user_id: currentUser.id
-                        });
-                    } else {
-                        await supabaseClient
-                            .from('transacciones')
-                            .update({
-                                fecha: tx.fecha,
-                                tipo: tx.tipo,
-                                monto: tx.monto,
-                                moneda: tx.moneda,
-                                descripcion: tx.descripcion,
-                                referencia: tx.referencia || ''
-                            })
-                            .eq('id', tx.id);
-                    }
-                }
+                // Batch upsert para cada tabla
+                await Promise.all([
+                    syncToSupabase('transacciones', txs, currentUser.id),
+                    syncToSupabase('compras', compras, currentUser.id),
+                    syncToSupabase('deudas', deudas, currentUser.id),
+                    syncToSupabase('creditos', creditos, currentUser.id),
+                    syncToSupabase('configuracion', configuracion, currentUser.id)
+                ]);
 
-                // Sincronizar compras
-                for (const compra of compras) {
-                    const { data: existingCompra } = await supabaseClient
-                        .from('compras')
-                        .select('id')
-                        .eq('id', compra.id)
-                        .single();
-
-                    if (!existingCompra) {
-                        await supabaseClient.from('compras').insert({
-                            id: compra.id,
-                            item: compra.item,
-                            total: compra.total,
-                            downpayment: compra.downpayment,
-                            total_installments: compra.totalInstallments,
-                            initial_payment_date: compra.initialPaymentDate || 0,
-                            installments: JSON.stringify(compra.installments),
-                            status: compra.status,
-                            user_id: currentUser.id
-                        });
-                    } else {
-                        await supabaseClient
-                            .from('compras')
-                            .update({
-                                item: compra.item,
-                                total: compra.total,
-                                downpayment: compra.downpayment,
-                                total_installments: compra.totalInstallments,
-                                initial_payment_date: compra.initialPaymentDate || 0,
-                                installments: JSON.stringify(compra.installments),
-                                status: compra.status
-                            })
-                            .eq('id', compra.id);
-                    }
-                }
-
-                // Sincronizar deudas
-                for (const deuda of deudas) {
-                    const { data: existingDeuda } = await supabaseClient
-                        .from('deudas')
-                        .select('id')
-                        .eq('id', deuda.id)
-                        .single();
-
-                    if (!existingDeuda) {
-                        await supabaseClient.from('deudas').insert({
-                            id: deuda.id,
-                            tipo: deuda.tipo,
-                            persona: deuda.persona,
-                            concepto: deuda.concepto,
-                            monto_total: deuda.montoTotal,
-                            monto_pendiente: deuda.montoPendiente,
-                            status: deuda.status,
-                            user_id: currentUser.id
-                        });
-                    } else {
-                        await supabaseClient
-                            .from('deudas')
-                            .update({
-                                tipo: deuda.tipo,
-                                persona: deuda.persona,
-                                concepto: deuda.concepto,
-                                monto_total: deuda.montoTotal,
-                                monto_pendiente: deuda.montoPendiente,
-                                status: deuda.status
-                            })
-                            .eq('id', deuda.id);
-                    }
-                }
-
-                // Sincronizar configuración
-                for (const cfg of configuracion) {
-                    const { data: existingCfg } = await supabaseClient
-                        .from('configuracion')
-                        .select('id')
-                        .eq('key', cfg.key)
-                        .eq('user_id', currentUser.id)
-                        .single();
-
-                    if (!existingCfg) {
-                        await supabaseClient.from('configuracion').insert({
-                            key: cfg.key,
-                            value: cfg.value,
-                            user_id: currentUser.id
-                        });
-                    } else {
-                        await supabaseClient
-                            .from('configuracion')
-                            .update({ value: cfg.value })
-                            .eq('id', existingCfg.id);
-                    }
-                }
+                updateSyncIndicator('connected');
             } catch (err) {
                 console.warn('No se pudo sincronizar con Supabase.', err);
+                updateSyncIndicator('disconnected');
+            } finally {
+                isSyncing = false;
+            }
+        }
+
+        async function pullFromSupabase(tableName, userId) {
+            if (!cloudSyncEnabled || !supabaseClient) return [];
+
+            try {
+                let query = supabaseClient.from(tableName).select('*');
+                if (tableName !== 'configuracion') {
+                    query = query.eq('user_id', userId);
+                }
+                const { data, error } = await query;
+                if (error) throw error;
+                return data || [];
+            } catch (err) {
+                console.warn(`Error descargando ${tableName} desde Supabase:`, err);
+                return [];
             }
         }
 
         async function hydrateCurrentUserFromSupabase(userRecord) {
             if (!cloudSyncEnabled || !supabaseClient || !userRecord) return;
+            updateSyncIndicator('syncing');
 
             try {
-                // Obtener datos del usuario desde Supabase
+                // Verificar si el usuario existe en Supabase
                 const { data: remoteUser, error } = await supabaseClient
                     .from('usuarios')
                     .select('*')
                     .eq('username', userRecord.username)
-                    .single();
+                    .maybeSingle();
 
                 if (error || !remoteUser) {
                     // Si no existe en Supabase, subir datos locales
                     await syncCurrentUserDataToSupabase();
+                    updateSyncIndicator('connected');
                     return;
                 }
 
+                // Verificar si la contraseña coincide
                 if (remoteUser.password && remoteUser.password !== userRecord.password) {
+                    updateSyncIndicator('disconnected');
                     return;
                 }
 
-                // Obtener transacciones desde Supabase
-                const { data: remoteTxs } = await supabaseClient
-                    .from('transacciones')
-                    .select('*')
-                    .eq('user_id', userRecord.id);
+                // Descargar TODOS los datos de Supabase en paralelo
+                const [remoteTxs, remoteCompras, remoteDeudas, remoteCreditos] = await Promise.all([
+                    pullFromSupabase('transacciones', userRecord.id),
+                    pullFromSupabase('compras', userRecord.id),
+                    pullFromSupabase('deudas', userRecord.id),
+                    pullFromSupabase('creditos', userRecord.id)
+                ]);
 
-                // Obtener compras desde Supabase
-                const { data: remoteCompras } = await supabaseClient
-                    .from('compras')
-                    .select('*')
-                    .eq('user_id', userRecord.id);
+                if (remoteTxs.length === 0 && remoteCompras.length === 0 && remoteDeudas.length === 0 && remoteCreditos.length === 0) {
+                    // No hay datos en Supabase, subir los locales
+                    await syncCurrentUserDataToSupabase();
+                    updateSyncIndicator('connected');
+                    return;
+                }
 
-                // Obtener deudas desde Supabase
-                const { data: remoteDeudas } = await supabaseClient
-                    .from('deudas')
-                    .select('*')
-                    .eq('user_id', userRecord.id);
-
-                // Obtener configuración desde Supabase
-                const { data: remoteConfig } = await supabaseClient
-                    .from('configuracion')
-                    .select('*')
-                    .eq('user_id', userRecord.id);
-
-                // Sincronizar datos remotos a local
-                await db.transaction('rw', db.transacciones, db.compras, db.deudas, db.configuracion, async () => {
+                // Reemplazar datos locales con los de Supabase
+                await db.transaction('rw', db.transacciones, db.compras, db.deudas, db.creditos, async () => {
+                    // Limpiar datos locales del usuario
                     await db.transacciones.where('userId').equals(userRecord.id).delete();
                     await db.compras.where('userId').equals(userRecord.id).delete();
                     await db.deudas.where('userId').equals(userRecord.id).delete();
+                    await db.creditos.where('userId').equals(userRecord.id).delete();
 
+                    // Insertar datos de Supabase
                     for (const item of remoteTxs || []) {
                         await db.transacciones.add({
                             id: item.id,
@@ -907,15 +992,43 @@
                             userId: userRecord.id
                         });
                     }
-                    for (const item of remoteConfig || []) {
-                        await db.configuracion.put({ key: item.key, value: item.value });
+                    for (const item of remoteCreditos || []) {
+                        await db.creditos.add({
+                            id: item.id,
+                            tipo: item.tipo,
+                            frecuencia: item.frecuencia,
+                            montoTotal: parseFloat(item.monto_total),
+                            totalCuotas: item.total_cuotas,
+                            tasaInteres: parseFloat(item.tasa_interes),
+                            fechaInicio: item.fecha_inicio,
+                            descripcion: item.descripcion || '',
+                            installments: typeof item.installments === 'string' ? JSON.parse(item.installments) : (item.installments || []),
+                            status: item.status,
+                            userId: userRecord.id
+                        });
                     }
                 });
 
-                // Subir cambios locales que no existan en remoto
-                await syncCurrentUserDataToSupabase();
+                updateSyncIndicator('connected');
             } catch (err) {
                 console.warn('No se pudo cargar la información remota del usuario desde Supabase.', err);
+                updateSyncIndicator('disconnected');
+            }
+        }
+
+        function startPeriodicSync() {
+            if (syncInterval) clearInterval(syncInterval);
+            syncInterval = setInterval(async () => {
+                if (currentUser && cloudSyncEnabled && supabaseClient) {
+                    await syncCurrentUserDataToSupabase();
+                }
+            }, 30000); // Cada 30 segundos
+        }
+
+        function stopPeriodicSync() {
+            if (syncInterval) {
+                clearInterval(syncInterval);
+                syncInterval = null;
             }
         }
 
@@ -1314,22 +1427,33 @@
 
                 // Cálculo de las cuotas exactamente iguales
                 const remaining = total - downpayment;
-                const equalAmount = Math.round((remaining / totalInstallments) * 100) / 100;
-                // Ajustar para que la suma sea exacta
                 const installments = [];
-                let sumAmounts = 0;
-                for (let i = 1; i <= totalInstallments; i++) {
-                    const amount = i === totalInstallments
-                        ? Math.round((remaining - sumAmounts) * 100) / 100
-                        : equalAmount;
-                    sumAmounts += amount;
+                
+                if (totalInstallments === 1) {
+                    // Línea Cotidiana: Inicial + 1 cuota (el resto después de la inicial)
                     installments.push({
-                        installmentNumber: i,
-                        dueDate: firstPaymentTimestamp + (i * 14 * 24 * 60 * 60 * 1000), // Cada 14 días desde la fecha inicial
-                        amount: amount,
+                        installmentNumber: 1,
+                        dueDate: firstPaymentTimestamp + (14 * 24 * 60 * 60 * 1000), // 14 días desde la fecha inicial
+                        amount: remaining,
                         status: 'pendiente',
                         paidAmount: 0
                     });
+                } else {
+                    const equalAmount = Math.round((remaining / totalInstallments) * 100) / 100;
+                    let sumAmounts = 0;
+                    for (let i = 1; i <= totalInstallments; i++) {
+                        const amount = i === totalInstallments
+                            ? Math.round((remaining - sumAmounts) * 100) / 100
+                            : equalAmount;
+                        sumAmounts += amount;
+                        installments.push({
+                            installmentNumber: i,
+                            dueDate: firstPaymentTimestamp + (i * 14 * 24 * 60 * 60 * 1000), // Cada 14 días desde la fecha inicial
+                            amount: amount,
+                            status: 'pendiente',
+                            paidAmount: 0
+                        });
+                    }
                 }
 
                 // Guardar la compra
@@ -1404,7 +1528,39 @@
                     }
                 }
 
-                if (targetType === 'cashea') {
+                if (targetType === 'credito') {
+                    const credito = await db.creditos.get(targetId);
+                    if (credito) {
+                        const inst = credito.installments[instIdx];
+                        const remaining = Math.round((inst.amount - inst.paidAmount) * 100) / 100;
+
+                        if (payAmount > remaining) {
+                            alert("No puedes pagar un monto superior al saldo restante de esta cuota.");
+                            return;
+                        }
+
+                        inst.paidAmount += payAmount;
+                        if (Math.round(inst.paidAmount * 100) / 100 >= inst.amount) {
+                            inst.status = 'pagado';
+                        }
+
+                        const allPaid = credito.installments.every(i => i.status === 'pagado');
+                        credito.status = allPaid ? 'pagado' : 'pendiente';
+
+                        await db.creditos.put(credito);
+
+                        await db.transacciones.add({
+                            fecha: new Date(`${payDate}T12:00:00`).getTime(),
+                            tipo: 'egreso',
+                            monto: payMethod === 'VES' ? (payAmount * bcvRate) : payAmount,
+                            moneda: payMethod,
+                            descripcion: `Pago cuota N°${inst.installmentNumber} de crédito: ${credito.tipo}${credito.descripcion ? ' - ' + credito.descripcion : ''}`,
+                            referencia: payReferencia,
+                            userId: currentUser.id
+                        });
+                        syncCurrentUserDataToSupabase().catch(() => {});
+                    }
+                } else if (targetType === 'cashea') {
                     const purchase = await db.compras.get(targetId);
                     if (purchase) {
                         const inst = purchase.installments[instIdx];
@@ -1593,6 +1749,117 @@
                 });
             }
 
+            // Manejador del formulario de Créditos
+            document.getElementById('credito-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!currentUser) {
+                    alert('Debes iniciar sesión para registrar un crédito.');
+                    return;
+                }
+                const tipo = document.getElementById('cred-tipo').value;
+                const frecuencia = document.getElementById('cred-frecuencia').value;
+                const montoTotal = parseFloat(document.getElementById('cred-monto').value);
+                const totalCuotas = parseInt(document.getElementById('cred-cuotas').value);
+                const tasaInteres = parseFloat(document.getElementById('cred-tasa').value) || 0;
+                const fechaInicioStr = document.getElementById('cred-fecha-inicio').value;
+                const descripcion = document.getElementById('cred-descripcion').value.trim();
+
+                if (!fechaInicioStr || isNaN(montoTotal) || montoTotal <= 0 || isNaN(totalCuotas) || totalCuotas <= 0) {
+                    alert('Completa todos los campos correctamente.');
+                    return;
+                }
+
+                const fechaInicio = new Date(`${fechaInicioStr}T12:00:00`).getTime();
+                
+                // Calcular cuotas con interés simple
+                const montoConInteres = tasaInteres > 0 ? montoTotal * (1 + tasaInteres / 100) : montoTotal;
+                const montoCuota = montoConInteres / totalCuotas;
+                
+                const freqMap = { mensual: 30, quincenal: 15, semanal: 7 };
+                const freqDays = freqMap[frecuencia] || 30;
+                
+                const installments = [];
+                for (let i = 1; i <= totalCuotas; i++) {
+                    installments.push({
+                        installmentNumber: i,
+                        dueDate: fechaInicio + (i * freqDays * 24 * 60 * 60 * 1000),
+                        amount: Math.round(montoCuota * 100) / 100,
+                        status: 'pendiente',
+                        paidAmount: 0
+                    });
+                }
+
+                await db.creditos.add({
+                    tipo,
+                    frecuencia,
+                    montoTotal,
+                    totalCuotas,
+                    tasaInteres,
+                    fechaInicio,
+                    descripcion,
+                    installments,
+                    status: 'pendiente',
+                    userId: currentUser.id
+                });
+
+                // Registrar el desembolso como ingreso a caja
+                await db.transacciones.add({
+                    fecha: fechaInicio,
+                    tipo: 'ingreso',
+                    monto: montoTotal,
+                    moneda: 'USD',
+                    descripcion: `Desembolso crédito: ${tipo}${descripcion ? ' - ' + descripcion : ''}`,
+                    userId: currentUser.id
+                });
+
+                await syncCurrentUserDataToSupabase().catch(() => {});
+                document.getElementById('credito-form').reset();
+                document.getElementById('cred-fecha-inicio').value = new Date().toISOString().split('T')[0];
+                await updateBalancesAndDashboards();
+            });
+
+            // Manejador del formulario de Caja (Agregar/Retirar)
+            document.getElementById('cash-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!currentUser) {
+                    alert('Debes iniciar sesión para registrar un movimiento de caja.');
+                    return;
+                }
+                const tipo = document.getElementById('cash-type').value;
+                const moneda = document.getElementById('cash-moneda').value;
+                const monto = parseFloat(document.getElementById('cash-monto').value);
+                const descripcion = document.getElementById('cash-descripcion').value.trim();
+                const referencia = document.getElementById('cash-referencia').value.trim();
+
+                if (!descripcion || isNaN(monto) || monto <= 0) {
+                    alert('Introduce una descripción válida y un monto mayor a 0.');
+                    return;
+                }
+
+                if (referencia) {
+                    const allTx = await db.transacciones.toArray();
+                    const exists = allTx.some(t => t.referencia && t.referencia.trim().toLowerCase() === referencia.toLowerCase());
+                    if (exists) {
+                        alert(`¡Advertencia! La referencia "${referencia}" ya está duplicada y no se permite su registro.`);
+                        return;
+                    }
+                }
+
+                await db.transacciones.add({
+                    fecha: Date.now(),
+                    tipo: tipo,
+                    monto: monto,
+                    moneda: moneda,
+                    descripcion: descripcion,
+                    referencia: referencia,
+                    userId: currentUser.id
+                });
+
+                closeCashModal();
+                await syncCurrentUserDataToSupabase().catch(() => {});
+                await updateBalancesAndDashboards();
+            });
+
             // Filtro de historial transaccional
             document.getElementById('filter-tx-type').addEventListener('change', async () => {
                 await renderTransacciones();
@@ -1677,6 +1944,7 @@
             await renderTransacciones();
             await renderCompras();
             await renderDeudas();
+            await renderCreditos();
             await renderAdminPanel();
             await checkUpcomingCuotas();
             lucide.createIcons();
@@ -1753,6 +2021,10 @@
             }
         }
 
+        // Variables para paginación
+        let txPage = 0;
+        const TX_PAGE_SIZE = 50;
+
         async function renderTransacciones() {
             const filter = document.getElementById('filter-tx-type').value;
             let txs = await db.transacciones.where('userId').equals(currentUser.id).reverse().toArray();
@@ -1769,7 +2041,11 @@
                 return;
             }
 
-            txs.forEach(t => {
+            // Paginación: mostrar solo las últimas 50 transacciones
+            const startIdx = Math.max(0, txs.length - TX_PAGE_SIZE);
+            const paginatedTxs = txs.slice(startIdx);
+
+            paginatedTxs.forEach(t => {
                 const dateStr = new Date(t.fecha).toLocaleString('es-VE', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit'});
                 const formatSymbol = t.moneda === 'USD' ? '$' : 'Bs ';
                 const fontColor = t.tipo === 'ingreso' ? 'text-emerald-400' : 'text-rose-400';
@@ -1828,26 +2104,159 @@
                 return;
             }
 
-            purchases.forEach(p => {
-                const totalPaid = p.installments.reduce((sum, inst) => sum + inst.paidAmount, 0);
-                const remainingGlobal = (p.total - p.downpayment) - totalPaid;
-                const progressPct = Math.round((totalPaid / (p.total - p.downpayment)) * 100) || 0;
+            // Separar en activos y pagados
+            const activos = purchases.filter(p => p.status !== 'pagado');
+            const pagados = purchases.filter(p => p.status === 'pagado');
+
+            function renderGroup(title, items, icon, colorClass, groupId) {
+                if (items.length === 0) return '';
+                
+                let itemsHtml = '';
+                items.forEach(p => {
+                    const totalPaid = p.installments.reduce((sum, inst) => sum + inst.paidAmount, 0);
+                    const remainingGlobal = (p.total - p.downpayment) - totalPaid;
+                    const progressPct = Math.round((totalPaid / (p.total - p.downpayment)) * 100) || 0;
+                    
+                    let installmentRows = '';
+                    p.installments.forEach((inst, idx) => {
+                        const dueStr = new Date(inst.dueDate).toLocaleDateString('es-VE', {day: '2-digit', month: '2-digit'});
+                        const isPaid = inst.status === 'pagado';
+                        const remainingInst = inst.amount - inst.paidAmount;
+                        const canEditInst = currentUser && currentUser.role === 'admin';
+
+                        installmentRows += `
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg ${isPaid ? 'bg-slate-800/20 border border-emerald-950/40 text-slate-500' : 'bg-slate-800/60 border border-slate-700/40'} text-xs">
+                                <div class="space-y-1">
+                                    <span class="font-bold text-slate-300">Cuota ${inst.installmentNumber} / ${p.totalInstallments}</span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-slate-500">Vence: ${dueStr}</span>
+                                        <span class="px-1.5 py-0.5 rounded ${isPaid ? 'bg-emerald-950 text-emerald-400' : 'bg-amber-950 text-amber-400'} font-semibold uppercase tracking-wider text-[10px]">
+                                            ${isPaid ? 'Pagado' : 'Pendiente'}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-4 mt-2 sm:mt-0 justify-between sm:justify-end">
+                                    <div class="text-right">
+                                        <p class="font-bold text-slate-200">$${inst.amount.toFixed(2)}</p>
+                                        ${!isPaid && inst.paidAmount > 0 ? `<p class="text-[10px] text-emerald-400 font-semibold">Abonado: $${inst.paidAmount.toFixed(2)}</p>` : ''}
+                                    </div>
+                                    ${!isPaid ? `
+                                        <button onclick="openPaymentModal('cashea', ${p.id}, ${idx}, ${remainingInst}, '${p.item} - Cuota ${inst.installmentNumber}')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg transition text-[11px]">
+                                            Abonar
+                                        </button>
+                                        ${canEditInst ? `<button onclick="openEditModal('installment', ${p.id}, ${idx})" class="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-lg transition text-[11px]">Editar</button>` : ''}
+                                    ` : `
+                                        <span class="text-emerald-400 p-1 bg-emerald-500/10 rounded-full"><i data-lucide="check" class="w-4 h-4"></i></span>
+                                    `}
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    itemsHtml += `
+                        <div class="bg-slate-900 border border-slate-700/60 rounded-xl p-5 space-y-4 shadow-sm">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-800 pb-3">
+                                <div>
+                                    <h5 class="font-bold text-slate-100 flex items-center gap-2">${p.item}</h5>
+                                    <p class="text-xs text-slate-400">Total: $${p.total.toFixed(2)} | Inicial: $${p.downpayment.toFixed(2)}</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-xs text-slate-400">Deuda Restante</p>
+                                    <span class="font-bold text-amber-400">$${remainingGlobal.toFixed(2)}</span>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-slate-400">Progreso de Pago</span>
+                                    <span class="font-semibold text-slate-200">${progressPct}%</span>
+                                </div>
+                                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                                    <div class="bg-indigo-500 h-full rounded-full transition-all duration-300" style="width: ${progressPct}%"></div>
+                                </div>
+                            </div>
+
+                            <div class="space-y-2 mt-4">
+                                <p class="text-xs font-semibold tracking-wider uppercase text-slate-400">Cuotas Quincenales</p>
+                                ${installmentRows}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                return `
+                    <div class="bg-slate-800/60 border border-slate-700/60 rounded-2xl overflow-hidden">
+                        <button onclick="toggleCasheaGroup('${groupId}')" class="w-full flex items-center justify-between p-4 hover:bg-slate-700/40 transition text-left">
+                            <div class="flex items-center gap-3">
+                                <span class="p-2 rounded-lg ${colorClass}">
+                                    <i data-lucide="${icon}" class="w-5 h-5"></i>
+                                </span>
+                                <div>
+                                    <h4 class="font-bold text-slate-100 text-base">${title}</h4>
+                                    <p class="text-xs text-slate-400">${items.length} financiamiento(s)</p>
+                                </div>
+                            </div>
+                            <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-transform duration-200" id="${groupId}-icon"></i>
+                        </button>
+                        <div id="${groupId}" class="${groupId === 'cashea-activos' ? '' : 'hidden'} space-y-2 px-4 pb-4">
+                            ${itemsHtml}
+                        </div>
+                    </div>
+                `;
+            }
+
+            list.innerHTML = `
+                ${renderGroup('Activos', activos, 'clock', 'bg-amber-500/10 text-amber-400', 'cashea-activos')}
+                ${renderGroup('Pagados', pagados, 'check-circle-2', 'bg-emerald-500/10 text-emerald-400', 'cashea-pagados')}
+            `;
+        }
+
+        // Función global para toggle de grupos Cashea
+        window.toggleCasheaGroup = function(groupId) {
+            const group = document.getElementById(groupId);
+            const icon = document.getElementById(`${groupId}-icon`);
+            if (group) {
+                group.classList.toggle('hidden');
+                if (icon) {
+                    icon.style.transform = group.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+                }
+            }
+        };
+
+        async function renderCreditos() {
+            const list = document.getElementById('creditos-list');
+            if (!list) return;
+            list.innerHTML = '';
+
+            const creditos = await db.creditos.where('userId').equals(currentUser.id).reverse().toArray();
+
+            if (creditos.length === 0) {
+                list.innerHTML = `<div class="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center text-slate-500">Ningún crédito registrado.</div>`;
+                return;
+            }
+
+            creditos.forEach(c => {
+                const totalPaid = c.installments.reduce((sum, inst) => sum + inst.paidAmount, 0);
+                const remaining = c.installments.reduce((sum, inst) => sum + (inst.amount - inst.paidAmount), 0);
+                const montoConInteres = c.tasaInteres > 0 ? c.montoTotal * (1 + c.tasaInteres / 100) : c.montoTotal;
+                const progressPct = Math.round((totalPaid / montoConInteres) * 100) || 0;
 
                 const card = document.createElement('div');
                 card.className = "bg-slate-900 border border-slate-700/60 rounded-xl p-5 space-y-4 shadow-sm";
-                
-                let installmentRows = '';
-                p.installments.forEach((inst, idx) => {
-                    const dueStr = new Date(inst.dueDate).toLocaleDateString('es-VE', {day: '2-digit', month: '2-digit'});
-                    const isPaid = inst.status === 'pagado';
-                    const remainingInst = inst.amount - inst.paidAmount;
 
-                    const canEditInst = currentUser && currentUser.role === 'admin';
+                const freqLabels = { mensual: 'Mensual', quincenal: 'Quincenal', semanal: 'Semanal' };
+                const freqLabel = freqLabels[c.frecuencia] || c.frecuencia;
+
+                let installmentRows = '';
+                c.installments.forEach((inst, idx) => {
+                    const dueStr = new Date(inst.dueDate).toLocaleDateString('es-VE', {day: '2-digit', month: '2-digit', year: 'numeric'});
+                    const isPaid = inst.status === 'pagado';
+                    const remainingInst = Math.round((inst.amount - inst.paidAmount) * 100) / 100;
 
                     installmentRows += `
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg ${isPaid ? 'bg-slate-800/20 border border-emerald-950/40 text-slate-500' : 'bg-slate-800/60 border border-slate-700/40'} text-xs">
                             <div class="space-y-1">
-                                <span class="font-bold text-slate-300">Cuota ${inst.installmentNumber} / ${p.totalInstallments}</span>
+                                <span class="font-bold text-slate-300">Cuota ${inst.installmentNumber} / ${c.totalCuotas}</span>
                                 <div class="flex items-center gap-2">
                                     <span class="text-slate-500">Vence: ${dueStr}</span>
                                     <span class="px-1.5 py-0.5 rounded ${isPaid ? 'bg-emerald-950 text-emerald-400' : 'bg-amber-950 text-amber-400'} font-semibold uppercase tracking-wider text-[10px]">
@@ -1861,10 +2270,9 @@
                                     ${!isPaid && inst.paidAmount > 0 ? `<p class="text-[10px] text-emerald-400 font-semibold">Abonado: $${inst.paidAmount.toFixed(2)}</p>` : ''}
                                 </div>
                                 ${!isPaid ? `
-                                    <button onclick="openPaymentModal('cashea', ${p.id}, ${idx}, ${remainingInst}, '${p.item} - Cuota ${inst.installmentNumber}')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg transition text-[11px]">
-                                        Abonar
+                                    <button onclick="openPaymentModal('credito', ${c.id}, ${idx}, ${remainingInst}, '${c.tipo}${c.descripcion ? ' - ' + c.descripcion : ''} - Cuota ${inst.installmentNumber}')" class="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-lg transition text-[11px]">
+                                        Pagar
                                     </button>
-                                    ${canEditInst ? `<button onclick="openEditModal('installment', ${p.id}, ${idx})" class="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-lg transition text-[11px]">Editar</button>` : ''}
                                 ` : `
                                     <span class="text-emerald-400 p-1 bg-emerald-500/10 rounded-full"><i data-lucide="check" class="w-4 h-4"></i></span>
                                 `}
@@ -1876,12 +2284,15 @@
                 card.innerHTML = `
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-800 pb-3">
                         <div>
-                            <h5 class="font-bold text-slate-100 flex items-center gap-2">${p.item}</h5>
-                            <p class="text-xs text-slate-400">Total: $${p.total.toFixed(2)} | Inicial: $${p.downpayment.toFixed(2)}</p>
+                            <h5 class="font-bold text-slate-100 flex items-center gap-2">
+                                <span class="px-2 py-0.5 text-[10px] bg-cyan-950 text-cyan-400 rounded-full uppercase font-bold">${c.tipo}</span>
+                                ${c.descripcion || ''}
+                            </h5>
+                            <p class="text-xs text-slate-400">${freqLabel} | Tasa: ${c.tasaInteres}% | Total: $${c.montoTotal.toFixed(2)}</p>
                         </div>
                         <div class="text-right">
                             <p class="text-xs text-slate-400">Deuda Restante</p>
-                            <span class="font-bold text-amber-400">$${remainingGlobal.toFixed(2)}</span>
+                            <span class="font-bold text-amber-400">$${remaining.toFixed(2)}</span>
                         </div>
                     </div>
                     
@@ -1891,12 +2302,12 @@
                             <span class="font-semibold text-slate-200">${progressPct}%</span>
                         </div>
                         <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                            <div class="bg-indigo-500 h-full rounded-full transition-all duration-300" style="width: ${progressPct}%"></div>
+                            <div class="bg-cyan-500 h-full rounded-full transition-all duration-300" style="width: ${progressPct}%"></div>
                         </div>
                     </div>
 
                     <div class="space-y-2 mt-4">
-                        <p class="text-xs font-semibold tracking-wider uppercase text-slate-400">Cuotas Quincenales</p>
+                        <p class="text-xs font-semibold tracking-wider uppercase text-slate-400">Cuotas</p>
                         ${installmentRows}
                     </div>
                 `;
@@ -2052,6 +2463,30 @@
                 await renderAdminPanel();
                 lucide.createIcons();
             }
+        }
+
+        // --- 9.5. GESTIÓN DE MODAL DE CAJA (Agregar/Retirar) ---
+        function openCashModal(tipo) {
+            const modal = document.getElementById('cash-modal');
+            const title = document.getElementById('cash-modal-title');
+            const subtitle = document.getElementById('cash-modal-subtitle');
+            const cashType = document.getElementById('cash-type');
+            
+            cashType.value = tipo;
+            if (tipo === 'ingreso') {
+                title.textContent = 'Agregar a Caja';
+                subtitle.textContent = 'Registrar ingreso a caja disponible';
+            } else {
+                title.textContent = 'Retirar de Caja';
+                subtitle.textContent = 'Registrar egreso de caja disponible';
+            }
+            
+            document.getElementById('cash-form').reset();
+            modal.classList.remove('hidden');
+        }
+
+        function closeCashModal() {
+            document.getElementById('cash-modal').classList.add('hidden');
         }
 
         // --- 10. GESTIÓN DE MODAL DE PAGO ---
